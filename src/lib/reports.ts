@@ -23,6 +23,7 @@ export type ReportFilters = {
   branchId?: string | undefined;
   repId?: string | undefined;
   productId?: string | undefined;
+  customerId?: string | undefined;
   saleType?: "walk_in" | "customer" | undefined;
 };
 
@@ -49,6 +50,7 @@ export function getSalesReport(db: Db, scope: AccessScope, f: ReportFilters) {
         branchIds,
         repId: f.repId,
         productId: f.productId,
+        customerId: f.customerId,
         saleType: f.saleType,
       }).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     : [];
@@ -59,6 +61,7 @@ export function getSalesReport(db: Db, scope: AccessScope, f: ReportFilters) {
         branchIds,
         repId: f.repId,
         productId: f.productId,
+        customerId: f.customerId,
         saleType: f.saleType,
         includePromo: true,
       })

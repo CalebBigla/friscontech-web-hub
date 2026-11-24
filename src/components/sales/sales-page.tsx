@@ -14,8 +14,8 @@ import {
 import { AppShell, RestrictedNotice } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { ALL, EmptyState, FilterSelect, MetricCard, Panel } from "@/components/shared";
+import { CustomerFilter, PeriodFilter, describeRange, type FilterPeriod } from "@/components/period-filter";
 import { RecordSaleDialog } from "@/components/sales/record-sale-dialog";
 import { PlaceOrderDialog } from "@/components/orders/place-order-dialog";
 import { OwnerSaleAdjustments } from "@/components/sales/owner-sale-adjustments";
@@ -34,7 +34,7 @@ import {
   saleTotal,
   type SalesFilters,
 } from "@/lib/calculations";
-import { getPeriodRange, monthOf, type PeriodKey } from "@/lib/dates";
+import { getPeriodRange, monthOf } from "@/lib/dates";
 import {
   formatCompactNaira,
   formatDate,
@@ -46,12 +46,6 @@ import {
 } from "@/lib/format";
 
 const route = getRouteApi("/sales");
-const periods: { key: PeriodKey; label: string }[] = [
-  { key: "today", label: "Today" },
-  { key: "week", label: "This Week" },
-  { key: "month", label: "This Month" },
-  { key: "custom", label: "Custom" },
-];
 const statusClass = {
   completed: "status-success",
   pending: "status-warning",
@@ -91,7 +85,8 @@ export function SalesPage() {
     void navigate({ to: ".", search: (prev) => ({ ...prev, ...patch }), replace: true });
   };
   const today = db.tenant.referenceDate;
-  const period = search.period ?? "month";
+  const period: FilterPeriod =
+    search.period === "today" || search.period === "week" || search.period === "custom" ? search.period : "month";
   const range = getPeriodRange(period, today, { from: search.from, to: search.to });
 
   const branchOptions = db.branches.filter(
@@ -114,7 +109,9 @@ export function SalesPage() {
         ? search.rep
         : undefined);
   const productId = search.product;
-  const saleType = search.type;
+  const customerId = search.customer;
+  // A chosen customer means account orders only.
+  const saleType = customerId ? "customer" : search.type;
 
   const filters: SalesFilters = {
     range,
@@ -122,6 +119,7 @@ export function SalesPage() {
     branchIds: scope.branchIds,
     repId,
     productId,
+    customerId,
     saleType,
   };
   const data = useMemo(() => {
@@ -154,6 +152,7 @@ export function SalesPage() {
     branchId,
     repId,
     productId,
+    customerId,
     saleType,
     scope.branchIds,
     scope.user.role,
@@ -168,10 +167,7 @@ export function SalesPage() {
   const branchName = (id: string) =>
     db.branches.find((b) => b.id === id)?.name.replace(" Branch", "") ?? "—";
   const product = (id: string) => db.products.find((x) => x.id === id);
-  const rangeLabel =
-    range.from === range.to
-      ? formatDate(range.from)
-      : `${formatShortDate(range.from)} – ${formatDate(range.to)}`;
+  const rangeLabel = describeRange(range);
 
   if (!scope.canViewSales)
     return (
@@ -213,10 +209,16 @@ export function SalesPage() {
           ...db.products.map((p) => ({ value: p.id, label: p.name })),
         ]}
       />
+      <CustomerFilter
+        db={db}
+        scope={scope}
+        value={customerId ?? ALL}
+        onChange={(v) => update({ customer: v === ALL ? undefined : v, ...(v !== ALL ? { type: undefined } : {}) })}
+      />
       <FilterSelect
         label="Sale type filter"
         value={saleType ?? ALL}
-        onChange={(v) => update({ type: v === ALL ? undefined : (v as "walk_in" | "customer") })}
+        onChange={(v) => update({ type: v === ALL ? undefined : (v as "walk_in" | "customer"), ...(v === "walk_in" ? { customer: undefined } : {}) })}
         options={[
           { value: ALL, label: "Walk-in & customer" },
           { value: "walk_in", label: "Walk-in only" },
@@ -261,46 +263,17 @@ export function SalesPage() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="grid grid-cols-4 rounded-md border border-border bg-card p-1">
-            {periods.map((p) => (
-              <Button
-                key={p.key}
-                size="sm"
-                variant={period === p.key ? "default" : "ghost"}
-                onClick={() =>
-                  update({
-                    period: p.key === "month" ? undefined : p.key,
-                    ...(p.key === "custom"
-                      ? { from: search.from ?? range.from, to: search.to ?? range.to }
-                      : { from: undefined, to: undefined }),
-                  })
-                }
-              >
-                {p.label}
-              </Button>
-            ))}
-          </div>
-          {period === "custom" && (
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                aria-label="From date"
-                max={today}
-                value={range.from}
-                onChange={(e) => update({ from: e.target.value })}
-                className="h-9 bg-card text-xs"
-              />
-              <span className="text-xs text-muted-foreground">to</span>
-              <Input
-                type="date"
-                aria-label="To date"
-                max={today}
-                value={range.to}
-                onChange={(e) => update({ to: e.target.value })}
-                className="h-9 bg-card text-xs"
-              />
-            </div>
-          )}
+          <PeriodFilter
+            today={today}
+            value={{ period, from: search.from, to: search.to }}
+            onChange={(next) =>
+              update({
+                period: next.period === "month" ? undefined : next.period,
+                from: next.period === "custom" ? next.from : undefined,
+                to: next.period === "custom" ? next.to : undefined,
+              })
+            }
+          />
         </div>
       </div>
 

@@ -22,8 +22,6 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   ALL,
   EmptyState,
@@ -35,9 +33,10 @@ import {
 import { TargetProgressBar, TargetStatusBadge } from "@/components/targets/target-shared";
 import { useLiveWorkspace } from "@/hooks/use-live-workspace";
 import { DataGate } from "@/components/shared";
+import { CustomerFilter, PeriodFilter, describeRange, type PeriodState } from "@/components/period-filter";
 import { getAccessScope, useCurrentUserId } from "@/lib/session";
 import { getPreferences } from "@/lib/settings";
-import { getPeriodRange, type PeriodKey } from "@/lib/dates";
+import { getPeriodRange } from "@/lib/dates";
 import { keptQuantity, saleTotal } from "@/lib/calculations";
 import { formatDate, formatMonth, formatNaira, formatNumber, formatPercent } from "@/lib/format";
 import { progressLabel, targetStatusLabel } from "@/lib/catalog-calculations";
@@ -56,22 +55,13 @@ import {
 
 type Draft = {
   type: ReportType;
-  period: PeriodKey;
-  from: string;
-  to: string;
+  when: PeriodState;
   branchId: string;
+  customerId: string;
   repId: string;
   productId: string;
   saleType: string;
 };
-const periods: { value: PeriodKey; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "week", label: "This week" },
-  { value: "month", label: "This month" },
-  { value: "quarter", label: "This quarter" },
-  { value: "custom", label: "Custom range" },
-];
-
 function downloadCsv(name: string, header: string[], rows: (string | number)[][]) {
   const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
   const blob = new Blob([[header, ...rows].map((r) => r.map(esc).join(",")).join("\n")], {
@@ -100,47 +90,40 @@ function ReportsPageContent() {
   const { db } = useLiveWorkspace();
   const scope = getAccessScope(db, useCurrentUserId());
   const today = db.tenant.referenceDate;
+  // The saved default period; "This quarter" opens as custom dates covering the quarter.
+  const preferred = getPreferences(db, scope.user.id).defaultReportPeriod;
   const init: Draft = {
     type: "sales",
-    period: getPreferences(db, scope.user.id).defaultReportPeriod,
-    from: `${today.slice(0, 7)}-01`,
-    to: today,
+    when:
+      preferred === "quarter"
+        ? { period: "custom", ...getPeriodRange("quarter", today) }
+        : { period: preferred === "today" || preferred === "week" ? preferred : "month" },
     branchId: ALL,
+    customerId: ALL,
     repId: ALL,
     productId: ALL,
     saleType: ALL,
   };
+  // Filters apply as soon as they change.
   const [draft, setDraft] = useState(init);
-  const [applied, setApplied] = useState(init);
-  const [loading, setLoading] = useState(false);
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
 
   const branches = db.branches.filter((b) => !scope.branchIds || scope.branchIds.includes(b.id));
   const reps = getReportReps(db, scope, draft.branchId === ALL ? undefined : draft.branchId);
-  const rangeOf = (d: Draft) => getPeriodRange(d.period, today, { from: d.from, to: d.to });
-  const invalidRange =
-    draft.period === "custom" &&
-    (!draft.from || !draft.to || draft.from > draft.to || draft.to > today);
-
-  const generate = () => {
-    if (invalidRange) {
-      toast.error("Choose a valid date range up to today.");
-      return;
-    }
-    setApplied(draft);
-  };
+  const range = getPeriodRange(draft.when.period, today, { from: draft.when.from, to: draft.when.to });
   const opt = (v: string) => (v === ALL ? undefined : v);
   const filters: ReportFilters = {
-    range: rangeOf(applied),
-    branchId: opt(applied.branchId),
-    repId: opt(applied.repId),
-    productId: opt(applied.productId),
-    saleType: opt(applied.saleType) as ReportFilters["saleType"],
+    range,
+    branchId: opt(draft.branchId),
+    repId: opt(draft.repId),
+    productId: opt(draft.productId),
+    customerId: opt(draft.customerId),
+    saleType: (draft.customerId !== ALL ? "customer" : opt(draft.saleType)) as ReportFilters["saleType"],
   };
   const name = (id: string | null | undefined) => db.users.find((u) => u.id === id)?.name ?? "—";
   const bname = (id: string) => db.branches.find((b) => b.id === id)?.name ?? "—";
   const pname = (id: string) => db.products.find((p) => p.id === id)?.name ?? "—";
-  const rangeLabel = `${formatDate(filters.range.from)} – ${formatDate(filters.range.to)}`;
+  const rangeLabel = describeRange(range);
 
   const sales = getSalesReport(db, scope, filters);
   const targets: ReturnType<typeof getTargetReport> =
@@ -155,12 +138,12 @@ function ReportsPageContent() {
   const team = getTeamReport(db, scope, filters);
 
   const exportCsv = () => {
-    if (scope.user.role === "manager" && applied.type === "targets") {
+    if (scope.user.role === "manager" && draft.type === "targets") {
       toast.error("Target reports are not available to Managers.");
       return;
     }
-    const file = `${applied.type}-report-${filters.range.from}-${filters.range.to}.csv`;
-    if (applied.type === "sales")
+    const file = `${draft.type}-report-${filters.range.from}-${filters.range.to}.csv`;
+    if (draft.type === "sales")
       downloadCsv(
         file,
         ["Date", "Sales Rep", "Branch", "Product", "Quantity", "Discount", "Revenue"],
@@ -174,7 +157,7 @@ function ReportsPageContent() {
           saleTotal(s),
         ]),
       );
-    if (applied.type === "targets")
+    if (draft.type === "targets")
       downloadCsv(
         file,
         ["Sales Rep", "Branch", "Target", "Achieved", "Remaining", "Progress", "Status"],
@@ -188,7 +171,7 @@ function ReportsPageContent() {
           targetStatusLabel[r.status],
         ]),
       );
-    if (applied.type === "inventory")
+    if (draft.type === "inventory")
       downloadCsv(
         file,
         ["Product", "SKU", "Branch", "On Hand", "Available", "Threshold", "Status"],
@@ -202,7 +185,7 @@ function ReportsPageContent() {
           inventoryStatusLabel[r.status],
         ]),
       );
-    if (applied.type === "team")
+    if (draft.type === "team")
       downloadCsv(
         file,
         scope.user.role === "manager"
@@ -244,7 +227,7 @@ function ReportsPageContent() {
           : "Analyze sales, targets, inventory and team performance."
       }
       actions={
-        <Button size="sm" variant="outline" onClick={exportCsv} disabled={loading}>
+        <Button size="sm" variant="outline" onClick={exportCsv}>
           <Download className="size-4" />
           <span className="hidden sm:inline">Export</span>
         </Button>
@@ -267,15 +250,6 @@ function ReportsPageContent() {
                       ? "Team activity"
                       : reportTypeLabel[t],
                 }))}
-            />
-          </Ctl>
-          <Ctl label="Date range">
-            <FilterSelect
-              label="Date range"
-              className="w-full"
-              value={draft.period}
-              onChange={(v) => set({ period: v as PeriodKey })}
-              options={periods}
             />
           </Ctl>
           {branches.length > 1 ? (
@@ -322,12 +296,21 @@ function ReportsPageContent() {
               ]}
             />
           </Ctl>
+          <Ctl label="Customer">
+            <CustomerFilter
+              db={db}
+              scope={scope}
+              className="w-full"
+              value={draft.customerId}
+              onChange={(v) => set({ customerId: v, ...(v !== ALL ? { saleType: ALL } : {}) })}
+            />
+          </Ctl>
           <Ctl label="Sale type">
             <FilterSelect
               label="Sale type"
               className="w-full"
-              value={draft.saleType}
-              onChange={(v) => set({ saleType: v })}
+              value={draft.customerId !== ALL ? "customer" : draft.saleType}
+              onChange={(v) => set({ saleType: v, ...(v === "walk_in" ? { customerId: ALL } : {}) })}
               options={[
                 { value: ALL, label: "Walk-in & customer" },
                 { value: "walk_in", label: "Walk-in only" },
@@ -335,47 +318,16 @@ function ReportsPageContent() {
               ]}
             />
           </Ctl>
-          <div className="flex items-end">
-            <Button className="w-full" onClick={generate} disabled={loading}>
-              <BarChart3 className="size-4" />
-              {loading ? "Generating…" : "Generate Report"}
-            </Button>
-          </div>
         </div>
-        {draft.period === "custom" && (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
-            <Ctl label="From">
-              <Input
-                type="date"
-                value={draft.from}
-                max={today}
-                onChange={(e) => set({ from: e.target.value })}
-                className="h-9 text-xs"
-              />
-            </Ctl>
-            <Ctl label="To">
-              <Input
-                type="date"
-                value={draft.to}
-                max={today}
-                onChange={(e) => set({ to: e.target.value })}
-                className="h-9 text-xs"
-              />
-            </Ctl>
-          </div>
-        )}
-        {invalidRange && (
-          <p className="mt-2 text-[11px] font-medium text-destructive">
-            The start date must be before the end date, and neither can be after today.
-          </p>
-        )}
+        <div className="mt-3">
+          <Ctl label="Date range">
+            <PeriodFilter today={today} value={draft.when} onChange={(when) => set({ when })} />
+          </Ctl>
+        </div>
       </section>
 
-      {loading ? (
-        <ReportSkeleton />
-      ) : (
-        <>
-          {applied.type === "sales" && (
+      <>
+          {draft.type === "sales" && (
             <>
               <Kpis>
                 <MetricCard
@@ -475,7 +427,7 @@ function ReportsPageContent() {
             </>
           )}
 
-          {scope.user.role !== "manager" && applied.type === "targets" && (
+          {scope.user.role !== "manager" && draft.type === "targets" && (
             <>
               <Kpis>
                 <MetricCard
@@ -553,7 +505,7 @@ function ReportsPageContent() {
             </>
           )}
 
-          {applied.type === "inventory" && (
+          {draft.type === "inventory" && (
             <>
               <Kpis five>
                 <MetricCard
@@ -637,7 +589,7 @@ function ReportsPageContent() {
             </>
           )}
 
-          {applied.type === "team" && (
+          {draft.type === "team" && (
             <>
               <Kpis>
                 <MetricCard
@@ -739,8 +691,7 @@ function ReportsPageContent() {
               </Panel>
             </>
           )}
-        </>
-      )}
+      </>
     </AppShell>
   );
   function Table({
@@ -754,7 +705,7 @@ function ReportsPageContent() {
   }) {
     if (empty)
       return (
-        <EmptyState title={empty} detail="Adjust the filters and generate the report again." />
+        <EmptyState title={empty} detail="Try a different period or clear some filters." />
       );
     return (
       <div className="overflow-x-auto">
@@ -792,18 +743,6 @@ function Kpis({ children, five }: { children: React.ReactNode; five?: boolean })
       className={`mb-5 grid grid-cols-2 gap-3 sm:gap-4 ${five ? "lg:grid-cols-5" : "xl:grid-cols-4"}`}
     >
       {children}
-    </div>
-  );
-}
-function ReportSkeleton() {
-  return (
-    <div aria-busy="true" aria-label="Generating report">
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-32 rounded-lg" />
-        ))}
-      </div>
-      <Skeleton className="h-80 rounded-lg" />
     </div>
   );
 }

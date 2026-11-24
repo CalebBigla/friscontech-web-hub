@@ -196,7 +196,7 @@ export function CustomersPage() {
               ["Customers", formatNumber(repTotals.customers), "text-foreground"],
               ["Total sold", formatNaira(repTotals.sold), "text-foreground"],
               ["Total paid", formatNaira(repTotals.paid), "text-success"],
-              ["Outstanding", formatNaira(repTotals.owed), repTotals.owed > 0 ? "text-destructive" : "text-foreground"],
+              ["Customers still owe", formatNaira(repTotals.owed), repTotals.owed > 0 ? "text-destructive" : "text-foreground"],
               ["Awaiting confirmation", formatNaira(repTotals.pending), "text-warning"],
             ].map(([label, value, tone]) => (
               <div key={label} className="rounded-lg bg-muted/50 p-3">
@@ -228,7 +228,7 @@ export function CustomersPage() {
                 ]}
               />
             )}
-            {isOwner && (
+            {(isOwner || scope.user.role === "manager") && (
               <FilterSelect
                 label="Sales rep"
                 value={repFilter}
@@ -238,7 +238,12 @@ export function CustomersPage() {
                   { value: "all", label: "All sales reps" },
                   { value: "unmanaged", label: "Needs reassignment" },
                   ...db.users
-                    .filter((u) => u.role === "sales_rep" && u.status === "active")
+                    .filter(
+                      (u) =>
+                        u.role === "sales_rep" &&
+                        u.status === "active" &&
+                        (scope.branchIds === null || (!!u.branchId && scope.branchIds.includes(u.branchId))),
+                    )
                     .map((u) => ({ value: u.id, label: u.name })),
                 ]}
               />

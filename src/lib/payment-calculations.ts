@@ -6,7 +6,7 @@ import type {
   PaymentStatus,
 } from "@/data/mock-db";
 import type { AccessScope } from "@/lib/session";
-import { saleTotal } from "@/lib/calculations";
+import { getSalesRevenue, saleTotal } from "@/lib/calculations";
 import { daysInMonth } from "@/lib/dates";
 
 export type PaymentBreakdown = Pick<Payment, "cashAmount" | "transferAmount">;
@@ -201,12 +201,17 @@ export function getManagerPaymentSummary(
           user.branchId === manager.branchId,
       )
     : [];
-  const totalSales = reps.reduce((sum, rep) => sum + getRepTotalSales(db, rep.id, period), 0);
+  // Revenue: the branch's completed sales this month.
+  const totalSales = manager?.branchId
+    ? getSalesRevenue(db, { branchId: manager.branchId, range: { from: `${period}-01`, to: `${period}-31` } })
+    : 0;
+  // What reps owe: walk-in sales + customer payments they collected (as the server).
+  const amountDue = reps.reduce((sum, rep) => sum + getRepAmountDue(db, rep.id, period), 0);
   const outstanding = reps.reduce((sum, rep) => {
     const collected = currentRows
       .filter((payment) => payment.salesRepId === rep.id)
       .reduce((total, payment) => total + payment.cashAmount + payment.transferAmount, 0);
-    return sum + Math.max(getRepTotalSales(db, rep.id, period) - collected, 0);
+    return sum + Math.max(getRepAmountDue(db, rep.id, period) - collected, 0);
   }, 0);
   const collected = cashPayment + transferPayment;
   return {
@@ -214,7 +219,8 @@ export function getManagerPaymentSummary(
     transferPayment,
     outstanding,
     totalSales,
-    collectionRate: totalSales ? (collected / totalSales) * 100 : 0,
+    amountDue,
+    collectionRate: amountDue ? (collected / amountDue) * 100 : 0,
   };
 }
 
@@ -368,7 +374,11 @@ export function toCustomerPaymentEntry(payment: CustomerPayment): PaymentEntry {
   };
 }
 
-export type PaymentEntryFilters = PaymentFilters & { kind?: PaymentKind | "all" };
+export type PaymentEntryFilters = PaymentFilters & {
+  kind?: PaymentKind | "all";
+  /** Payment date (customer payments) or submission date (pay-ins), inclusive. */
+  range?: { from: string; to: string };
+};
 function inPaymentScope(
   scope: AccessScope,
   row: { tenantId: string; repId: string; managerId: string; branchId: string },
@@ -407,6 +417,7 @@ export function getPaymentEntriesForScope(
     .filter(
       (r) =>
         (!filters.period || r.period === filters.period) &&
+        (!filters.range || (r.date >= filters.range.from && r.date <= filters.range.to)) &&
         (!filters.branchId || r.branchId === filters.branchId) &&
         (!filters.salesRepId || r.repId === filters.salesRepId) &&
         (!filters.status || filters.status === "all" || r.status === filters.status) &&
@@ -415,17 +426,26 @@ export function getPaymentEntriesForScope(
     .sort((a, b) => (b.trail[0]!.at ?? "").localeCompare(a.trail[0]!.at ?? ""));
 }
 
-/** Tile figures. Only confirmed money is "received"; outstanding = walk-in sales not yet reported. */
+/**
+ * Tile figures for a date range. The pay-in tiles count rep pay-ins only: a customer
+ * payment is the money the rep then pays in, so counting both would count the same
+ * naira twice. Two balances, each adding up on its own:
+ *   customers: sold to customers - paid by customers = customers still owe;
+ *   reps: collected (walk-in sales + customer payments) - paid in = still to pay in.
+ * entries must already be filtered to the same range (getPaymentEntriesForScope).
+ */
 export function getPaymentOverviewSummary(
   db: Db,
   scope: AccessScope,
   entries: PaymentEntry[],
-  period: string,
+  range: { from: string; to: string },
   filters: PaymentFilters = {},
 ) {
+  const payIns = entries.filter((e) => e.kind === "rep");
   const sum = (status: PaymentStatus) =>
-    entries.filter((e) => e.status === status).reduce((total, e) => total + e.amount, 0);
-  const count = (status: PaymentStatus) => entries.filter((e) => e.status === status).length;
+    payIns.filter((e) => e.status === status).reduce((total, e) => total + e.amount, 0);
+  const count = (status: PaymentStatus) => payIns.filter((e) => e.status === status).length;
+  const collectedRows = entries.filter((e) => e.kind === "customer" && e.status === "confirmed");
   const reps = db.users.filter(
     (u) =>
       u.tenantId === db.tenant.id &&
@@ -436,10 +456,20 @@ export function getPaymentOverviewSummary(
       (!filters.branchId || u.branchId === filters.branchId) &&
       (!filters.salesRepId || u.id === filters.salesRepId),
   );
-  const outstanding = isValidPaymentPeriod(period)
-    ? reps.reduce((total, rep) => total + getRepPaymentSummary(db, rep.id, period).outstanding, 0)
-    : 0;
+  const repIds = new Set(reps.map((rep) => rep.id));
+  const soldToCustomers = reps.reduce((total, rep) => total + getSalesRevenue(db, { repId: rep.id, saleType: "customer", range }), 0);
+  const walkIns = reps.reduce((total, rep) => total + getSalesRevenue(db, { repId: rep.id, saleType: "walk_in", range }), 0);
+  const customerCollections = db.customerPayments
+    .filter((p) => p.tenantId === db.tenant.id && repIds.has(p.receivedBy) && p.status === "confirmed"
+      && p.paymentDate >= range.from && p.paymentDate <= range.to)
+    .reduce((total, p) => total + p.amount, 0);
+  const paidInAny = payIns.filter((e) => e.status !== "declined" && repIds.has(e.repId)).reduce((total, e) => total + e.amount, 0);
+  const outstanding = Math.max(walkIns + customerCollections - paidInAny, 0);
   return {
+    soldToCustomers,
+    customerCollections,
+    customersOwe: soldToCustomers - customerCollections,
+    paidIn: sum("confirmed") + sum("submitted") + sum("acknowledged"),
     confirmed: sum("confirmed"),
     confirmedCount: count("confirmed"),
     awaitingAcknowledgement: sum("submitted"),
@@ -448,6 +478,8 @@ export function getPaymentOverviewSummary(
     awaitingConfirmationCount: count("acknowledged"),
     declined: sum("declined"),
     declinedCount: count("declined"),
+    collected: collectedRows.reduce((total, e) => total + e.amount, 0),
+    collectedCount: collectedRows.length,
     outstanding,
   };
 }

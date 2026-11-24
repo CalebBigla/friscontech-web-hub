@@ -29,6 +29,7 @@ import type { CustomerPayment, Db, Payment, PaymentStatus } from "@/data/mock-db
 import { saleTotal } from "@/lib/calculations";
 import { orderIdOf } from "@/lib/customer-calculations";
 import { formatDate, formatNaira, formatTime } from "@/lib/format";
+import { CustomerFilter, MethodFilter, PeriodFilter, usePeriodFilter } from "@/components/period-filter";
 import {
   getPaymentEntriesForScope,
   getPaymentOverviewSummary,
@@ -73,6 +74,7 @@ const kindLabel: Record<PaymentKind, string> = {
   customer: "Customer payment",
 };
 const currentMonth = (date: string) => date.slice(0, 7);
+
 const monthLabel = (period: string) =>
   isValidPaymentPeriod(period)
     ? new Intl.DateTimeFormat("en-NG", { month: "long", year: "numeric", timeZone: "UTC" }).format(
@@ -85,7 +87,13 @@ export function PaymentPage() {
   const userId = useCurrentUserId();
   const scope = getAccessScope(db, userId);
   const role = scope.user.role;
-  const [period, setPeriod] = useState(currentMonth(db.tenant.referenceDate));
+  const today = db.tenant.referenceDate;
+  // Day, week, month (default) or chosen dates.
+  const { state: periodState, setState: setPeriodState, range, label: rangeLabel } = usePeriodFilter(today);
+  // The month a rep pays in for, chosen in the submit dialog (this month by default).
+  const [period, setPeriod] = useState(currentMonth(today));
+  const [method, setMethod] = useState("all");
+  const [customerId, setCustomerId] = useState("all");
   const [branchId, setBranchId] = useState("all");
   const [repId, setRepId] = useState("all");
   const [status, setStatus] = useState("all");
@@ -99,16 +107,32 @@ export function PaymentPage() {
   const [submitOpen, setSubmitOpen] = useState(false);
 
   const filters = {
-    ...(isValidPaymentPeriod(period) ? { period } : {}),
+    range,
     ...(branchId !== "all" ? { branchId } : {}),
     ...(repId !== "all" ? { salesRepId: repId } : {}),
   };
   const periodEntries = useMemo(
     () => getPaymentEntriesForScope(db, scope, { ...filters, kind: kind as PaymentKind | "all" }),
-    [db, scope, period, branchId, repId, kind], // eslint-disable-line react-hooks/exhaustive-deps
+    [db, scope, range.from, range.to, branchId, repId, kind], // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const rows = periodEntries.filter((e) => status === "all" || e.status === status);
-  const summary = getPaymentOverviewSummary(db, scope, periodEntries, period, filters);
+  const rows = periodEntries.filter(
+    (e) =>
+      (status === "all" || e.status === status) &&
+      (method === "all" || (method === "cash" ? e.cash > 0 : e.transfer > 0)) &&
+      (customerId === "all" || e.customerId === customerId),
+  );
+  // What the rows shown add up to, split by how the money came in (declined payments left out).
+  const counted = rows.filter((e) => e.status !== "declined");
+  const shownCash = counted.reduce((sum, e) => sum + e.cash, 0);
+  const shownTransfer = counted.reduce((sum, e) => sum + e.transfer, 0);
+  const shownTotals = [
+    method !== "transfer" && `Cash ${formatNaira(shownCash)}`,
+    method !== "cash" && `Transfer ${formatNaira(shownTransfer)}`,
+  ].filter(Boolean).join(" · ");
+  const tableSubtitle = `${rangeLabel} · ${rows.length} payment${rows.length === 1 ? "" : "s"} · ${shownTotals}${
+    counted.length < rows.length ? " (declined not counted)" : ""
+  }`;
+  const summary = getPaymentOverviewSummary(db, scope, periodEntries, range, filters);
   const selected = selectedId
     ? (getPaymentEntriesForScope(db, scope).find((e) => e.id === selectedId) ?? null)
     : null;
@@ -160,53 +184,54 @@ export function PaymentPage() {
       </div>
 
       <DataGate isLoading={isLoading} error={error}>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      {/* Two separate balances, each adding up on its own line:
+          customers: sold - paid by customers = customers still owe (as the Customers tab);
+          reps: collected - paid in = still to pay in. */}
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">From customers · {rangeLabel}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile label="Sold to customers" value={formatNaira(summary.soldToCustomers)} detail="Fulfilled orders" />
         <StatTile
           tone="success"
-          label="Total confirmed"
+          label="Paid by customers"
+          value={formatNaira(summary.customerCollections)}
+          detail="Credited to their accounts"
+        />
+        <StatTile
+          tone={summary.customersOwe > 0 ? "danger" : "success"}
+          label={summary.customersOwe >= 0 ? "Customers still owe" : "Customers in credit"}
+          value={formatNaira(Math.abs(summary.customersOwe))}
+          detail="Sold − paid by customers"
+        />
+      </div>
+      <p className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Paid in by sales reps · {rangeLabel}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile
+          tone="success"
+          label="Paid in · confirmed"
           value={formatNaira(summary.confirmed)}
-          detail={`${summary.confirmedCount} payment${summary.confirmedCount === 1 ? "" : "s"}`}
+          detail={`${summary.confirmedCount} pay-in${summary.confirmedCount === 1 ? "" : "s"} confirmed by the Owner`}
         />
         <StatTile
           tone="warning"
-          label="Awaiting acknowledgement"
-          value={formatNaira(summary.awaitingAcknowledgement)}
-          detail={`${summary.awaitingAcknowledgementCount} with manager`}
-        />
-        <StatTile
-          tone="brand"
-          label="Awaiting owner confirmation"
-          value={formatNaira(summary.awaitingConfirmation)}
-          detail={`${summary.awaitingConfirmationCount} acknowledged`}
-        />
-        <StatTile
-          tone="danger"
-          label="Declined"
-          value={formatNaira(summary.declined)}
-          detail={`${summary.declinedCount} declined`}
+          label="Paid in · awaiting"
+          value={formatNaira(summary.awaitingAcknowledgement + summary.awaitingConfirmation)}
+          detail={`${summary.awaitingAcknowledgementCount} with manager · ${summary.awaitingConfirmationCount} with Owner${summary.declinedCount ? ` · ${summary.declinedCount} declined (${formatNaira(summary.declined)})` : ""}`}
         />
         <StatTile
           tone="violet"
-          label="Outstanding"
+          label="Still to pay in"
           value={formatNaira(summary.outstanding)}
-          detail="Walk-in sales not yet reported"
+          detail="Collected (walk-ins + customer payments) − paid in"
         />
       </div>
 
       <Panel
         title="Payments"
-        subtitle={monthLabel(period)}
+        subtitle={tableSubtitle}
         className="mt-4"
         action={
           <div className="flex flex-wrap gap-2">
-            <Input
-              type="month"
-              aria-label="Period"
-              max={currentMonth(db.tenant.referenceDate)}
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="h-9 w-40 text-xs"
-            />
+            <PeriodFilter today={today} value={periodState} onChange={setPeriodState} />
             {role !== "sales_rep" && branches.length > 1 && (
               <FilterSelect
                 label="Branch"
@@ -234,10 +259,25 @@ export function PaymentPage() {
                 ]}
               />
             )}
+            <MethodFilter value={method} onChange={setMethod} />
+            <CustomerFilter
+              db={db}
+              scope={scope}
+              value={customerId}
+              className="w-44"
+              onChange={(v) => {
+                setCustomerId(v);
+                // Only customer payments belong to a customer.
+                if (v !== "all") setKind("customer");
+              }}
+            />
             <FilterSelect
               label="Type"
               value={kind}
-              onChange={setKind}
+              onChange={(v) => {
+                setKind(v);
+                if (v === "rep") setCustomerId("all");
+              }}
               className="w-36"
               options={[
                 { value: "all", label: "All types" },

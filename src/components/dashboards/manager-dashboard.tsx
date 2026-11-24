@@ -155,14 +155,14 @@ function ManagerDashboardContent() {
       <section className="mt-4 grid gap-4 sm:grid-cols-2">
         <Panel
           title="Collection progress"
-          subtitle="Cash and transfer collected against completed sales"
+          subtitle="Confirmed pay-ins against what reps collected (walk-in sales and customer payments)"
         >
           <div className="p-5">
             <div className="flex items-end justify-between gap-3">
               <strong className="text-3xl">{formatPercent(summary.collectionRate, 0)}</strong>
               <span className="text-xs text-muted-foreground">
                 {formatCompactNaira(summary.cashPayment + summary.transferPayment)} collected /{" "}
-                {formatCompactNaira(summary.totalSales)} sales
+                {formatCompactNaira(summary.amountDue)} due
               </span>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">

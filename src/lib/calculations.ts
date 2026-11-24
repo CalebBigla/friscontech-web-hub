@@ -11,6 +11,8 @@ export type SalesFilters = {
   branchIds?: string[] | null | undefined; // access scope
   repId?: string | undefined;
   productId?: string | undefined;
+  /** One customer's account orders. */
+  customerId?: string | undefined;
   /** walk_in = no customerId, customer = account order */
   saleType?: "walk_in" | "customer" | undefined;
   includeNonCompleted?: boolean;
@@ -47,6 +49,7 @@ export function filterSales(db: Db, f: SalesFilters = {}): Sale[] {
       (!f.branchIds || f.branchIds.includes(s.branchId)) &&
       (!f.repId || s.salesRepId === f.repId) &&
       (!f.productId || s.productId === f.productId) &&
+      (!f.customerId || s.customerId === f.customerId) &&
       (!f.saleType || (f.saleType === "customer") === !!s.customerId),
   );
 }
