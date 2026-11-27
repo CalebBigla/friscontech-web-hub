@@ -29,7 +29,7 @@ export function InventoryDetailPage({ inventoryId }: { inventoryId: string }) {
     return <AppShell title="Inventory item"><DataGate isLoading={isLoading} error={error}>{null}</DataGate></AppShell>;
   }
   if (!row || !canSeeBranch(scope, row.branch.id)) {
-    return <AppShell title="Inventory item"><RestrictedNotice message={row ? "This inventory belongs to a branch outside your access." : "This inventory record does not exist."} /><div className="mt-4 text-center"><Button variant="outline" asChild><Link to="/inventory"><ArrowLeft className="size-4" />Back to inventory</Link></Button></div></AppShell>;
+    return <AppShell title="Inventory item"><RestrictedNotice message={row ? "This inventory belongs to a branch outside your access." : "This inventory record does not exist."} /><div className="mt-4 text-center"><Button variant="secondary" asChild><Link to="/inventory"><ArrowLeft className="size-4" />Back to inventory</Link></Button></div></AppShell>;
   }
   const { product, branch, available, status } = row;
   const movements = getInventoryMovements(db, { productId: product.id, branchId: branch.id });
@@ -40,7 +40,7 @@ export function InventoryDetailPage({ inventoryId }: { inventoryId: string }) {
   return (
     <AppShell title={product.name} subtitle={`${branch.name} · ${product.sku}`}
       actions={scope.canManageStock && <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setAdjustOpen(true)}><SlidersHorizontal className="size-4" /><span className="hidden sm:inline">Adjust</span></Button>
+        <Button variant="secondary" onClick={() => setAdjustOpen(true)}><SlidersHorizontal className="size-4" /><span className="hidden sm:inline">Adjust</span></Button>
         <Button onClick={() => setAddOpen(true)}><Plus className="size-4" /><span className="hidden sm:inline">Add Stock</span></Button>
       </div>}>
       <Link to="/inventory" className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3.5" />Inventory</Link>
@@ -54,7 +54,7 @@ export function InventoryDetailPage({ inventoryId }: { inventoryId: string }) {
             <DetailItem label="Low-stock threshold"><span className="text-2xl font-bold">{row.record.lowStockThreshold}</span></DetailItem>
           </div>
           <div className="mx-5 mb-5 h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${status === "in_stock" ? "bg-success" : status === "low_stock" ? "bg-warning" : "bg-destructive"}`} style={{ width: `${Math.min((available / Math.max(row.record.reorderLevel * 2, 1)) * 100, 100)}%` }} /></div>
-          <p className="mx-5 -mt-3 mb-5 text-[11px] text-muted-foreground">Reorder level {row.record.reorderLevel} · stock value {formatNaira(row.value)} at selling price</p>
+          <p className="mx-5 -mt-3 mb-5 text-caption text-muted-foreground">Reorder level {row.record.reorderLevel} · stock value {formatNaira(row.value)} at selling price</p>
         </Panel>
         <Panel title="Product information">
           <div className="grid grid-cols-2 gap-5 p-5">
@@ -78,7 +78,7 @@ export function InventoryDetailPage({ inventoryId }: { inventoryId: string }) {
           <Panel title="Held for orders" subtitle={`${formatUnits(row.record.quantityReserved)} reserved until fulfilled`}>
             {openOrders.length ? <div className="divide-y divide-border">{openOrders.map((o) => (
               <Link key={o.id} to="/orders" search={{ status: "pending" }} className="flex items-center justify-between gap-3 px-5 py-3 text-xs hover:bg-muted/60">
-                <div className="min-w-0"><p className="font-semibold">{o.code} · {o.customerName}</p><p className="text-[11px] text-muted-foreground">{formatUnits(o.lines.filter((l) => l.productId === product.id).reduce((n, l) => n + l.quantity, 0))} · {db.users.find((u) => u.id === o.repId)?.name ?? "Sales rep"} · {formatDayTime(o.createdAt, db.tenant.referenceDate)}</p></div>
+                <div className="min-w-0"><p className="font-semibold">{o.code} · {o.customerName}</p><p className="text-caption text-muted-foreground">{formatUnits(o.lines.filter((l) => l.productId === product.id).reduce((n, l) => n + l.quantity, 0))} · {db.users.find((u) => u.id === o.repId)?.name ?? "Sales rep"} · {formatDayTime(o.createdAt, db.tenant.referenceDate)}</p></div>
                 <OrderStatusBadge status={o.status} />
               </Link>))}</div> : <EmptyState title="Nothing held." detail="No orders are waiting for this product." />}
           </Panel>

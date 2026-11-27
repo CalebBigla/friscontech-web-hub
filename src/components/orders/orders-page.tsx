@@ -252,23 +252,23 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
               );
             })}
           </ul>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Raised by {person(o.repId)} · {formatDayTime(o.createdAt, today)} · {formatNaira(orderTotal(o))}
           </p>
-          {o.note && <p className="text-[11px] text-muted-foreground">“{o.note}”</p>}
-          {o.fulfilledAt && <p className="text-[11px] text-muted-foreground">Fulfilled by {person(o.fulfilledBy)} · {formatDayTime(o.fulfilledAt, today)}</p>}
-          {o.acknowledgedAt && <p className="text-[11px] text-muted-foreground">Acknowledged by {person(o.acknowledgedBy)} · {formatDayTime(o.acknowledgedAt, today)}</p>}
-          {o.cancelledAt && <p className="text-[11px] text-destructive">{o.status === "voided" ? "Voided" : "Cancelled"} by {person(o.cancelledBy)} · {formatDayTime(o.cancelledAt, today)}{o.cancelReason ? ` · ${o.cancelReason}` : ""}</p>}
+          {o.note && <p className="text-caption text-muted-foreground">“{o.note}”</p>}
+          {o.fulfilledAt && <p className="text-caption text-muted-foreground">Fulfilled by {person(o.fulfilledBy)} · {formatDayTime(o.fulfilledAt, today)}</p>}
+          {o.acknowledgedAt && <p className="text-caption text-muted-foreground">Acknowledged by {person(o.acknowledgedBy)} · {formatDayTime(o.acknowledgedAt, today)}</p>}
+          {o.cancelledAt && <p className="text-caption text-destructive">{o.status === "voided" ? "Voided" : "Cancelled"} by {person(o.cancelledBy)} · {formatDayTime(o.cancelledAt, today)}{o.cancelReason ? ` · ${o.cancelReason}` : ""}</p>}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           {canChangePrices && !cancelling && !pricing && (
-            <Button size="sm" variant="outline" disabled={busy} onClick={openPricing}><Tag className="size-3.5" />Change prices</Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={openPricing}><Tag className="size-3.5" />Change prices</Button>
           )}
           {canCancel && !cancelling && !pricing && (
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setCancelling("cancel")}><X className="size-3.5" />Cancel order</Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setCancelling("cancel")}><X className="size-3.5" />Cancel order</Button>
           )}
           {canVoid && !cancelling && !pricing && (
-            <Button size="sm" variant="outline" className="text-destructive" disabled={busy} onClick={() => setCancelling("void")}><Ban className="size-3.5" />Void order</Button>
+            <Button size="sm" variant="secondary" className="text-destructive" disabled={busy} onClick={() => setCancelling("void")}><Ban className="size-3.5" />Void order</Button>
           )}
           {isStorekeeper && o.status === "pending" && !cancelling && (
             <Button size="sm" disabled={busy} onClick={() => void run(`${o.code} fulfilled`, () => fulfil.mutateAsync({ p_order_id: o.id }))}>
@@ -284,7 +284,7 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
       </div>
       {pricing && (
         <div className="mt-3 space-y-3 rounded-md border border-border p-3">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Set the new price per unit. {person(o.repId)} and the invoice show it as the price; only the Owner and managers see what it was.
             It can't go above the list price.
           </p>
@@ -296,7 +296,7 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
                 <li key={l.saleId} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 text-xs">
                     <p className="font-semibold">{formatNumber(l.quantity)} × {product(l.productId)}</p>
-                    <p className="text-[11px] text-muted-foreground">List price {formatNaira(list)} · now {formatNaira(priceEach(l))}</p>
+                    <p className="text-caption text-muted-foreground">List price {formatNaira(list)} · now {formatNaira(priceEach(l))}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input aria-label={`New price for ${product(l.productId)}`} type="number" inputMode="decimal" min={0} step="0.01"
@@ -305,7 +305,7 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
                     <span className="w-28 text-right text-xs font-semibold tabular-nums">
                       {Number.isFinite(p) && p > 0 ? formatNaira(p * l.quantity) : "—"}
                       {Number.isFinite(p) && p > 0 && p < list && (
-                        <span className="block text-[10px] font-normal text-success">{Math.round((1 - p / list) * 1000) / 10}% below list</span>
+                        <span className="block text-caption font-normal text-success">{Math.round((1 - p / list) * 1000) / 10}% below list</span>
                       )}
                     </span>
                   </div>
@@ -332,7 +332,7 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
       {cancelling && (
         <div className="mt-3 space-y-2">
           {cancelling === "void" && (
-            <p className="rounded-md bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
+            <p className="rounded-md bg-destructive/5 px-3 py-2 text-caption text-destructive">
               Voiding takes {formatNaira(orderTotal(o))} off {o.customerName}'s account and {person(o.repId)}'s sales, and puts the items back in stock.
               Only do this if the goods are back on the shelf or never left. It can't be undone.
             </p>
@@ -344,12 +344,12 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
             <div className="flex gap-2">
               <Button size="sm" variant="ghost" onClick={() => { setCancelling(false); setError(""); }}>Keep order</Button>
               {cancelling === "void" ? (
-                <Button size="sm" variant="outline" className="text-destructive" disabled={busy}
+                <Button size="sm" variant="secondary" className="text-destructive" disabled={busy}
                   onClick={() => void run(`${o.code} voided`, () => voidOrder.mutateAsync({ p_order_id: o.id, p_reason: reason.trim() }))}>
                   {voidOrder.isPending && <Loader2 className="size-3.5 animate-spin" />}Void order
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" className="text-destructive" disabled={busy}
+                <Button size="sm" variant="secondary" className="text-destructive" disabled={busy}
                   onClick={() => void run(`${o.code} cancelled`, () => cancel.mutateAsync({ p_order_id: o.id, p_reason: reason.trim() }))}>
                   {cancel.isPending && <Loader2 className="size-3.5 animate-spin" />}Cancel order
                 </Button>

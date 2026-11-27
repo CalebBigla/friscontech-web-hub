@@ -239,7 +239,7 @@ function ReportBody({ data, onClose }: { data: ReportData; onClose: () => void }
           <StatTile label="Out of stock" value={formatNumber(out)} tone="danger" />
         </div>
         <Panel className="mt-4 overflow-hidden" title="Stock position" action={
-          <Button size="sm" variant="outline" onClick={() => downloadCsv("inventory-report.csv", [["Product", "SKU", "Branch", "On hand", "Available", "Status"], ...rows.map((r) => [r.name, r.sku, r.branchName, r.quantity_on_hand, r.available, r.status])])}>
+          <Button size="sm" variant="secondary" onClick={() => downloadCsv("inventory-report.csv", [["Product", "SKU", "Branch", "On hand", "Available", "Status"], ...rows.map((r) => [r.name, r.sku, r.branchName, r.quantity_on_hand, r.available, r.status])])}>
             <Download className="size-4" />CSV
           </Button>
         }>
@@ -278,7 +278,7 @@ function ReportBody({ data, onClose }: { data: ReportData; onClose: () => void }
         </Panel>
       </div>
       <Panel className="mt-4 overflow-hidden" title="All sales" subtitle={`${formatNumber(data.sales.length)} lines`} action={
-        <Button size="sm" variant="outline" onClick={() => downloadCsv("sales-report.csv", [
+        <Button size="sm" variant="secondary" onClick={() => downloadCsv("sales-report.csv", [
           ["Date", "Code", "Branch", "Seller", "Product", "Type", "Quantity", "Unit price", "Discount", "Line total"],
           ...data.sales.map((s) => [s.sale_date, s.code, branch.get(s.branch_id) ?? "", person.get(s.sales_rep_id) ?? "", product.get(s.product_id)?.name ?? "",
             s.is_promo ? "Promo" : s.is_customer_sale ? "Customer" : "Walk-in", s.quantity, Number(s.unit_price), Number(s.discount_amount), Number(s.line_total)]),
@@ -288,7 +288,7 @@ function ReportBody({ data, onClose }: { data: ReportData; onClose: () => void }
           head={["Date", "Seller", "Product", "Qty|r", "Revenue|r"]}
           rows={data.sales.slice(0, 200).map((s) => [formatDate(s.sale_date), person.get(s.sales_rep_id) ?? "Staff", `${product.get(s.product_id)?.name ?? "Product"}${s.is_promo ? " (promo)" : ""}`, formatNumber(s.quantity), s.is_promo ? "Free" : formatNaira(Number(s.line_total))])}
         />
-        {data.sales.length > 200 && <p className="border-t border-border px-5 py-3 text-[11px] text-muted-foreground">Showing the latest 200 lines. The CSV has all {formatNumber(data.sales.length)}.</p>}
+        {data.sales.length > 200 && <p className="border-t border-border px-5 py-3 text-caption text-muted-foreground">Showing the latest 200 lines. The CSV has all {formatNumber(data.sales.length)}.</p>}
       </Panel>
     </>
   );
@@ -299,7 +299,7 @@ function ReportTable({ head, rows }: { head: string[]; rows: string[][] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-xs">
-        <thead><tr className="border-b border-border bg-muted/40 text-[10px] uppercase text-muted-foreground">
+        <thead><tr className="border-b border-border bg-muted/40 text-caption uppercase text-muted-foreground">
           {head.map((h) => <th key={h} className={`px-5 py-2.5 font-semibold ${h.endsWith("|r") ? "text-right" : ""}`}>{h.replace("|r", "")}</th>)}
         </tr></thead>
         <tbody>{rows.map((r, i) => (

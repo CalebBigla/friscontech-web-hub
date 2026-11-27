@@ -39,12 +39,12 @@ export function MovementList({ db, movements, showItem = false }: { db: Db; move
                 <p className="text-xs font-semibold">{movementTypeLabel[m.type]}{showItem && product && <span className="font-normal text-muted-foreground"> · {inv ? <Link to="/inventory/$inventoryId" params={{ inventoryId: inv.id }} className="hover:text-primary">{product.name}</Link> : product.name} · {branch?.name}</span>}</p>
                 <span className={`text-sm font-bold ${m.quantity > 0 ? "text-success" : "text-destructive"}`}>{m.quantity > 0 ? "+" : "−"}{formatUnits(Math.abs(m.quantity))}</span>
               </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="mt-0.5 text-caption text-muted-foreground">
                 {formatDayTime(m.createdAt, db.tenant.referenceDate)} · {who}
                 {request && <> · Stock request {request.id}</>}
                 {sale && <> · Sale {sale.code}</>}
               </p>
-              {m.note && m.type !== "stock_issued" && <p className="mt-1 text-[11px] text-muted-foreground">“{m.note}”</p>}
+              {m.note && m.type !== "stock_issued" && <p className="mt-1 text-caption text-muted-foreground">“{m.note}”</p>}
             </div>
           </li>
         );

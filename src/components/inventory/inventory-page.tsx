@@ -85,8 +85,8 @@ export function InventoryPage({ initialBranch, initialStatus }: { initialBranch?
   return (
     <AppShell title="Inventory" subtitle={simple ? "Products available to you" : "Monitor stock levels, availability, and inventory movement across your branches."}
       actions={<div className="flex gap-2">
-        {!simple && <Button variant="outline" onClick={() => setMovesOpen(true)}><History className="size-4" /><span className="hidden sm:inline">View Movements</span></Button>}
-        {scope.canConvertToPromo && <Button variant="outline" onClick={() => setPromoOpen(true)}><Gift className="size-4" /><span className="hidden sm:inline">Promo</span></Button>}
+        {!simple && <Button variant="secondary" onClick={() => setMovesOpen(true)}><History className="size-4" /><span className="hidden sm:inline">View Movements</span></Button>}
+        {scope.canConvertToPromo && <Button variant="secondary" onClick={() => setPromoOpen(true)}><Gift className="size-4" /><span className="hidden sm:inline">Promo</span></Button>}
         {scope.canManageStock && <Button onClick={() => openAdd()}><Plus className="size-4" /><span className="hidden sm:inline">Add Stock</span></Button>}
       </div>}>
       <div className="mb-5"><h1 className="text-xl font-bold">{simple ? "Available Products" : "Inventory"}</h1><p className="mt-1 text-xs text-muted-foreground">{simple ? "Products available to you and how much stock is on hand" : "Monitor stock levels, availability, and inventory movement across your branches"}{activeBranch !== ALL ? ` · ${db.branches.find((b) => b.id === activeBranch)?.name}` : scope.branchIds ? ` · ${branches[0]?.name ?? ""}` : " · All branches"}</p></div>
@@ -112,21 +112,21 @@ export function InventoryPage({ initialBranch, initialStatus }: { initialBranch?
             options={[["status:1", "Needs attention first"], ["product:1", "Product A–Z"], ["available:-1", "Most available"], ["available:1", "Least available"], ["updated:-1", "Recently updated"]].map(([value = "", label = ""]) => ({ value, label }))} /></div>
         </div>}>
         {simple && <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left">
-          <thead><tr className="text-[10px] uppercase text-muted-foreground"><SortHead k="product" label="Product" /><th className="px-4 py-3">SKU</th><th className="hidden px-4 py-3 sm:table-cell">Category</th><th className="px-4 py-3 text-right">Selling price</th><SortHead k="available" label="Available" right /><SortHead k="status" label="Status" /></tr></thead>
-          <tbody>{shown.map((r) => <tr key={r.record.id} className="border-t border-border text-xs"><td className="px-4 py-3.5 font-bold">{r.product.name}{r.product.productType === "promo" && <span className="status status-violet ml-2 whitespace-nowrap">Promo</span>}</td><td className="px-4 py-3.5 font-mono text-[11px] text-muted-foreground">{r.product.sku}</td><td className="hidden px-4 py-3.5 sm:table-cell">{r.product.category}</td><td className="px-4 py-3.5 text-right">{formatNaira(r.product.unitPrice)}</td><td className="px-4 py-3.5 text-right font-bold">{formatNumber(r.available)} <span className="font-normal text-muted-foreground">{r.product.unit}</span></td><td className="px-4 py-3.5"><StockStatusBadge status={r.status} /></td></tr>)}</tbody>
+          <thead><tr className="text-caption uppercase text-muted-foreground"><SortHead k="product" label="Product" /><th className="px-4 py-3">SKU</th><th className="hidden px-4 py-3 sm:table-cell">Category</th><th className="px-4 py-3 text-right">Selling price</th><SortHead k="available" label="Available" right /><SortHead k="status" label="Status" /></tr></thead>
+          <tbody>{shown.map((r) => <tr key={r.record.id} className="border-t border-border text-xs"><td className="px-4 py-3.5 font-bold">{r.product.name}{r.product.productType === "promo" && <span className="status status-violet ml-2 whitespace-nowrap">Promo</span>}</td><td className="px-4 py-3.5 font-mono text-caption text-muted-foreground">{r.product.sku}</td><td className="hidden px-4 py-3.5 sm:table-cell">{r.product.category}</td><td className="px-4 py-3.5 text-right">{formatNaira(r.product.unitPrice)}</td><td className="px-4 py-3.5 text-right font-bold">{formatNumber(r.available)} <span className="font-normal text-muted-foreground">{r.product.unit}</span></td><td className="px-4 py-3.5"><StockStatusBadge status={r.status} /></td></tr>)}</tbody>
         </table></div>}
         {!simple && <>
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[840px] text-left">
-            <thead><tr className="text-[10px] uppercase text-muted-foreground">
+            <thead><tr className="text-caption uppercase text-muted-foreground">
               <SortHead k="product" label="Product" /><th className="hidden px-4 py-3 xl:table-cell">SKU</th><th className="px-4 py-3">Branch</th>
               <th className="px-4 py-3 text-right">On hand</th><SortHead k="available" label="Available" right /><th className="px-4 py-3 text-right">Threshold</th><th className="px-4 py-3">Nearest expiry</th>
               <SortHead k="status" label="Status" /><SortHead k="updated" label="Last updated" /><th className="px-4 py-3 text-right">Actions</th>
             </tr></thead>
             <tbody>{shown.map((r) => (
               <tr key={r.record.id} onClick={() => open(r.record)} className="cursor-pointer border-t border-border text-xs transition-colors hover:bg-muted/60">
-                <td className="px-4 py-3.5"><p className="font-bold">{r.product.name}{r.product.productType === "promo" && <span className="status status-violet ml-2 whitespace-nowrap">Promo</span>}</p><p className="text-[11px] text-muted-foreground"><span className="font-mono xl:hidden">{r.product.sku} · </span>{r.product.category} · {formatNaira(r.product.unitPrice)}</p></td>
-                <td className="hidden px-4 py-3.5 font-mono text-[11px] text-muted-foreground xl:table-cell">{r.product.sku}</td>
+                <td className="px-4 py-3.5"><p className="font-bold">{r.product.name}{r.product.productType === "promo" && <span className="status status-violet ml-2 whitespace-nowrap">Promo</span>}</p><p className="text-caption text-muted-foreground"><span className="font-mono xl:hidden">{r.product.sku} · </span>{r.product.category} · {formatNaira(r.product.unitPrice)}</p></td>
+                <td className="hidden px-4 py-3.5 font-mono text-caption text-muted-foreground xl:table-cell">{r.product.sku}</td>
                 <td className="px-4 py-3.5">{r.branch.name}</td>
                 <td className="px-4 py-3.5 text-right font-semibold">{formatNumber(r.record.quantityOnHand)}</td>
                 <td className="px-4 py-3.5 text-right font-bold">{formatNumber(r.available)}</td>
@@ -141,19 +141,19 @@ export function InventoryPage({ initialBranch, initialStatus }: { initialBranch?
         <div className="divide-y divide-border md:hidden">{shown.map((r) => (
           <div key={r.record.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
-              <Link to="/inventory/$inventoryId" params={{ inventoryId: r.record.id }} className="min-w-0"><p className="truncate text-sm font-bold">{r.product.name}</p><p className="text-[11px] text-muted-foreground">{r.product.sku} · {r.branch.name}</p></Link>
+              <Link to="/inventory/$inventoryId" params={{ inventoryId: r.record.id }} className="min-w-0"><p className="truncate text-sm font-bold">{r.product.name}</p><p className="text-caption text-muted-foreground">{r.product.sku} · {r.branch.name}</p></Link>
               <div className="flex items-center gap-1"><StockStatusBadge status={r.status} />{actions(r)}</div>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+            <div className="mt-3 grid grid-cols-3 gap-2 text-caption">
               {[["On hand", r.record.quantityOnHand], ["Available", r.available], ["Threshold", r.record.lowStockThreshold]].map(([k, v]) => <div key={k}><p className="text-muted-foreground">{k}</p><p className="font-bold">{formatNumber(Number(v))}</p></div>)}
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">Updated {formatDayTime(r.record.lastUpdated, db.tenant.referenceDate)}</p>
+            <p className="mt-2 text-caption text-muted-foreground">Updated {formatDayTime(r.record.lastUpdated, db.tenant.referenceDate)}</p>
           </div>))}</div>
         </>}
         {visible.length === 0 && empty}
         {pages > 1 && <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs">
           <span className="text-muted-foreground">Page {Math.min(page, pages)} of {pages}</span>
-          <div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>Next</Button></div>
+          <div className="flex gap-2"><Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button><Button size="sm" variant="secondary" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>Next</Button></div>
         </div>}
       </Panel>
       </DataGate>

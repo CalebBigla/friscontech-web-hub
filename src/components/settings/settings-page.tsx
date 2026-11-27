@@ -52,7 +52,7 @@ export function SettingsPage() {
           {sections.map((s) => { const { label, detail, Icon } = sectionMeta[s]; return (
             <button key={s} onClick={() => setActive(s)} aria-current={current === s ? "page" : undefined}
               className={`flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-left transition-colors ${current === s ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-              <Icon className="size-4 shrink-0" /><span><span className="block text-sm font-semibold">{label}</span><span className={`block text-[11px] ${current === s ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{detail}</span></span>
+              <Icon className="size-4 shrink-0" /><span><span className="block text-sm font-semibold">{label}</span><span className={`block text-caption ${current === s ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{detail}</span></span>
             </button>); })}
         </nav>
         <div className="min-w-0">
@@ -69,15 +69,15 @@ export function SettingsPage() {
 }
 
 function Field({ id, label, error, children, hint }: { id: string; label: string; error?: string | undefined; hint?: string; children: ReactNode }) {
-  return <div className="min-w-0"><Label htmlFor={id} className="text-xs font-semibold">{label}</Label><div className="mt-1.5">{children}</div>{hint && !error && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}<FieldError message={error} /></div>;
+  return <div className="min-w-0"><Label htmlFor={id} className="text-xs font-semibold">{label}</Label><div className="mt-1.5">{children}</div>{hint && !error && <p className="mt-1 text-caption text-muted-foreground">{hint}</p>}<FieldError message={error} /></div>;
 }
 function FormActions({ dirty, saving, onCancel }: { dirty: boolean; saving: boolean; onCancel: () => void }) {
   return <div className="flex flex-col-reverse gap-2 border-t border-border p-5 sm:flex-row sm:justify-end">
-    <Button type="button" variant="outline" disabled={!dirty || saving} onClick={onCancel}>Cancel</Button>
+    <Button type="button" variant="secondary" disabled={!dirty || saving} onClick={onCancel}>Cancel</Button>
     <Button type="submit" disabled={!dirty || saving}>{saving ? "Saving…" : "Save Changes"}</Button>
   </div>;
 }
-function ReadOnlyNote() { return <p className="mx-5 mt-5 rounded-md bg-muted px-3 py-2 text-[11px] text-muted-foreground">Only the business owner can change these details.</p>; }
+function ReadOnlyNote() { return <p className="mx-5 mt-5 rounded-md bg-muted px-3 py-2 text-caption text-muted-foreground">Only the business owner can change these details.</p>; }
 
 function GeneralSection() {
   const { db } = useLiveWorkspace();

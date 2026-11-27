@@ -123,13 +123,13 @@ function RepDashboardContent() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:w-64">
             <div className="rounded-md bg-muted p-3 sm:p-4">
-              <p className="text-[11px] text-muted-foreground">Remaining</p>
+              <p className="text-caption text-muted-foreground">Remaining</p>
               <p className="mt-1 text-base font-bold sm:text-lg">
                 {formatNaira(progress.remaining)}
               </p>
             </div>
             <div className="rounded-md bg-muted p-3 sm:p-4">
-              <p className="text-[11px] text-muted-foreground">Achievement</p>
+              <p className="text-caption text-muted-foreground">Achievement</p>
               <p className="mt-1 text-base font-bold sm:text-lg">
                 {formatPercent(progress.achievement)}
               </p>
@@ -165,14 +165,14 @@ function RepDashboardContent() {
             icon={<CircleDollarSign className="size-4 text-warning" />}
           />
           <div className="rounded-md border border-border p-3">
-            <p className="text-[11px] text-muted-foreground">Latest submission</p>
+            <p className="text-caption text-muted-foreground">Latest submission</p>
             <div className="mt-1 flex items-center gap-2">
               {latestPayment ? (
                 <>
-                  <Badge variant="outline" className="capitalize">
+                  <Badge variant="secondary" className="capitalize">
                     {latestPayment.status}
                   </Badge>
-                  <span className="truncate text-[11px] text-muted-foreground">
+                  <span className="truncate text-caption text-muted-foreground">
                     {formatDayTime(latestPayment.submittedAt, today)}
                   </span>
                 </>
@@ -210,7 +210,7 @@ function RepDashboardContent() {
                   <span className="block truncate text-sm font-semibold">
                     {order.code} · {order.customerName}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     {order.lines.length} item{order.lines.length === 1 ? "" : "s"} · {formatNaira(orderTotal(order))} · {formatDayTime(order.createdAt, today)}
                   </span>
                 </span>
@@ -235,7 +235,7 @@ function RepDashboardContent() {
                   <p className="text-xs font-semibold">{event.action.replaceAll("_", " ")}</p>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{event.subject}</p>
                 </div>
-                <span className="shrink-0 text-[10px] text-muted-foreground">
+                <span className="shrink-0 text-caption text-muted-foreground">
                   {formatDayTime(event.createdAt, today)}
                 </span>
               </div>
@@ -264,7 +264,7 @@ function RepDashboardContent() {
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[620px] text-left">
                 <thead>
-                  <tr className="text-[10px] uppercase text-muted-foreground">
+                  <tr className="text-caption uppercase text-muted-foreground">
                     <th className="px-5 py-3">Product</th>
                     <th className="px-5 py-3 text-right">Qty</th>
                     <th className="px-5 py-3 text-right">Revenue</th>
@@ -295,7 +295,7 @@ function RepDashboardContent() {
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{product(sale.productId)}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-caption text-muted-foreground">
                       Qty {sale.quantity} · {formatDayTime(sale.createdAt, today)}
                     </p>
                   </div>
@@ -308,7 +308,7 @@ function RepDashboardContent() {
           <EmptyState title="No sales yet" detail="Your orders count as sales once the storekeeper fulfils them." />
         )}
       </Panel>
-      <p className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
+      <p className="mt-4 flex items-center gap-2 text-caption text-muted-foreground">
         <ShoppingCart className="size-3" />
         Figures include completed sales only.
       </p>
@@ -321,7 +321,7 @@ function Amount({ label, amount, icon }: { label: string; amount: number; icon: 
   return (
     <div className="rounded-md border border-border p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] text-muted-foreground">{label}</p>
+        <p className="text-caption text-muted-foreground">{label}</p>
         {icon}
       </div>
       <p className="mt-1 truncate text-base font-bold sm:text-lg">{formatNaira(amount)}</p>

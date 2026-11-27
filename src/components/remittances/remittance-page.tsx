@@ -57,7 +57,7 @@ const statusTone: Record<RemittanceStatus, string> = {
 
 function RemittanceBadge({ status }: { status: RemittanceStatus }) {
   return (
-    <Badge variant="outline" className={`whitespace-nowrap ${statusTone[status]}`}>
+    <Badge variant="secondary" className={`whitespace-nowrap ${statusTone[status]}`}>
       {remittanceLabel[status]}
     </Badge>
   );
@@ -416,7 +416,7 @@ export function RemittancePage() {
             </div>
             {errors.form && <FieldError message={errors.form} />}
             <DialogFooter>
-              <Button variant="outline" disabled={busy} onClick={() => setDialog(null)}>
+              <Button variant="secondary" disabled={busy} onClick={() => setDialog(null)}>
                 Cancel
               </Button>
               <Button disabled={busy || !reconciliation.balanced} onClick={submit}>
@@ -539,7 +539,7 @@ export function RemittancePage() {
           )}
           {errors.form && <FieldError message={errors.form} />}
           <DialogFooter>
-            <Button variant="outline" disabled={busy} onClick={() => setDialog(null)}>
+            <Button variant="secondary" disabled={busy} onClick={() => setDialog(null)}>
               Cancel
             </Button>
             <Button
@@ -628,7 +628,7 @@ function RemittanceSummaryLines({
           </div>
         ))}
       </dl>
-      <p className="mt-3 border-t border-border pt-3 text-[11px] text-muted-foreground">
+      <p className="mt-3 border-t border-border pt-3 text-caption text-muted-foreground">
         Eligible payment position includes reported rep outstanding. Outstanding is shown separately
         and is not cash or transfer received.
       </p>
@@ -657,7 +657,7 @@ function RemittanceTable({
     <div className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain">
       <table className="hidden w-full min-w-[1150px] text-left md:table">
         <thead>
-          <tr className="text-[10px] uppercase text-muted-foreground">
+          <tr className="text-caption uppercase text-muted-foreground">
             {[
               ...(managerMode ? [] : ["Manager"]),
               "Branch",
@@ -703,7 +703,7 @@ function RemittanceTable({
                     ? db.branches.find((branch) => branch.id === row.branchId)?.name
                     : db.users.find((user) => user.id === row.managerId)?.name}
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-caption text-muted-foreground">
                   {managerMode
                     ? formatMonth(row.period)
                     : `${db.branches.find((branch) => branch.id === row.branchId)?.name ?? "Branch"} · ${formatMonth(row.period)}`}
@@ -828,13 +828,13 @@ function RemittanceActions({
           <Button size="sm" className="h-8" onClick={() => onConfirm?.(row)}>
             Confirm
           </Button>
-          <Button size="sm" variant="outline" className="h-8" onClick={() => onDecline?.(row)}>
+          <Button size="sm" variant="secondary" className="h-8" onClick={() => onDecline?.(row)}>
             Decline
           </Button>
         </>
       )}
       {managerMode && row.status === "declined" && onResubmit && (
-        <Button size="sm" variant="outline" className="h-8" onClick={() => onResubmit(row)}>
+        <Button size="sm" variant="secondary" className="h-8" onClick={() => onResubmit(row)}>
           New submission
         </Button>
       )}
@@ -878,7 +878,7 @@ function ManagerRemittanceSummary({
           </div>
         ))}
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-caption text-muted-foreground">
         Outstanding is the unpaid or remaining due position. It is not cash held.
       </p>
     </div>
@@ -935,11 +935,11 @@ function RemittanceDetails({
             </div>
             <div className="border-t border-border pt-3">
               <p className="text-xs font-semibold">Source records</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-caption text-muted-foreground">
                 {remittance.paymentIds.length} eligible payment records ·{" "}
                 {remittance.expenseIds.length} recorded expenses
               </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{branch?.name ?? "Branch"}</p>
+              <p className="mt-1 text-caption text-muted-foreground">{branch?.name ?? "Branch"}</p>
             </div>
           </>
         )}
@@ -965,7 +965,7 @@ function Timeline({
       </span>
       <div>
         <p className="text-xs font-semibold">{title}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-caption text-muted-foreground">
           {by ?? ""}
           {by ? " · " : ""}
           {formatDate(at)} at {formatTime(at)}

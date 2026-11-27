@@ -139,11 +139,11 @@ function ExchangeRow({ e, db, scope }: { e: Exchange; db: Db; scope: AccessScope
             Returns <strong>{formatNumber(e.returnQuantity)} × {product(e.returnedProductId)}</strong>
             {" "}for <strong>{formatNumber(e.replacementQuantity)} × {product(e.replacementProductId)}</strong>
           </p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             Requested by {person(e.repId)} · {formatDate(e.requestedAt.slice(0, 10))} · “{e.reason}”
           </p>
           {e.status === "fulfilled" && diff !== null && (
-            <p className="text-[11px]">
+            <p className="text-caption">
               Returned {formatNaira(e.returnedValue ?? 0)} · replacement {formatNaira(e.replacementValue ?? 0)} ·{" "}
               <span className={diff > 0 ? "font-semibold text-destructive" : diff < 0 ? "font-semibold text-success" : "font-semibold"}>
                 {diff > 0 ? `customer owes ${formatNaira(diff)} more` : diff < 0 ? `customer credited ${formatNaira(-diff)}` : "account unchanged"}
@@ -152,14 +152,14 @@ function ExchangeRow({ e, db, scope }: { e: Exchange; db: Db; scope: AccessScope
           )}
           {e.status === "rejected" && e.rejectionReason && <p className="text-xs text-destructive">Reason: {e.rejectionReason}</p>}
           {isStorekeeper && e.status === "pending" && (
-            <p className={`text-[11px] ${available >= e.replacementQuantity ? "text-success" : "text-destructive"}`}>
+            <p className={`text-caption ${available >= e.replacementQuantity ? "text-success" : "text-destructive"}`}>
               {formatNumber(available)} {product(e.replacementProductId)} in stock{available < e.replacementQuantity ? `, ${formatNumber(e.replacementQuantity)} needed` : ""}
             </p>
           )}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           {isStorekeeper && (e.status === "pending" || e.status === "approved") && !rejecting && (
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setRejecting(true)}><X className="size-3.5" />Reject</Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setRejecting(true)}><X className="size-3.5" />Reject</Button>
           )}
           {isStorekeeper && e.status === "pending" && !rejecting && (
             <Button size="sm" disabled={busy} onClick={() => void run("Exchange approved", () => approve.mutateAsync({ p_exchange_id: e.id }))}>
@@ -183,7 +183,7 @@ function ExchangeRow({ e, db, scope }: { e: Exchange; db: Db; scope: AccessScope
           <Input autoFocus aria-label="Reason for rejecting" placeholder="Reason for the rep" value={reason} onChange={(ev) => setReason(ev.target.value)} className="h-9 flex-1" />
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setRejecting(false); setError(""); }}>Cancel</Button>
-            <Button size="sm" variant="outline" className="text-destructive" disabled={busy}
+            <Button size="sm" variant="secondary" className="text-destructive" disabled={busy}
               onClick={() => void run("Exchange rejected", () => reject.mutateAsync({ p_exchange_id: e.id, p_reason: reason.trim() }))}>
               {reject.isPending && <Loader2 className="size-3.5 animate-spin" />}Reject exchange
             </Button>
@@ -312,7 +312,7 @@ function NewExchangeDialog({ open, onOpenChange, db, scope, exchanges }: {
           )}
           <FieldError message={errors["form"]} />
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={request.isPending}>{request.isPending && <Loader2 className="size-4 animate-spin" />}Send to storekeeper</Button>
           </DialogFooter>
         </form>

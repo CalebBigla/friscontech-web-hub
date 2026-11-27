@@ -149,7 +149,7 @@ export function CustomerFormDialog({
         </div>
         <FieldError message={errors.form} />
         <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button disabled={busy} onClick={save}>
@@ -298,7 +298,7 @@ export function RecordCustomerPaymentDialog({
         </div>
         <FieldError message={errors.customerId ?? errors.form} />
         <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button disabled={busy || !(Number(amount) > 0)} onClick={save}>
@@ -364,7 +364,7 @@ export function CreditLimitDialog({
           />
         </Field>
         <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button disabled={busy} onClick={save}>
@@ -442,7 +442,7 @@ export function ReassignCustomerDialog({
           />
         </Field>
         <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button disabled={busy || !reps.length} onClick={save}>

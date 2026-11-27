@@ -85,11 +85,11 @@ export function AuditLogPage() {
       {scope.user.role === "owner" && ready && (() => { const ov = getActivityOverview(db, period === ALL ? all : filterByRange(all, getPeriodRange(period as PeriodKey, today))); return (
         <Panel className="mb-5" title="Activity overview" subtitle="Who is doing what across the organization (follows the date range below)">
           <div className="grid gap-4 p-4 sm:grid-cols-2">
-            <div><p className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">By role</p>
+            <div><p className="mb-2 text-caption font-semibold uppercase text-muted-foreground">By role</p>
               {ov.byRole.map((r) => <button key={r.role} type="button" onClick={() => { setActor(ALL); setQ(""); }} className="flex w-full justify-between rounded-md px-2 py-1.5 text-xs hover:bg-muted"><span>{roleLabel[r.role as keyof typeof roleLabel] ?? r.role}</span><strong>{formatNumber(r.count)}</strong></button>)}
               {!ov.byRole.length && <p className="text-xs text-muted-foreground">No activity in this range.</p>}
             </div>
-            <div><p className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">Most active people</p>
+            <div><p className="mb-2 text-caption font-semibold uppercase text-muted-foreground">Most active people</p>
               {ov.topUsers.map((t) => { const u = user(t.userId); return <button key={t.userId} type="button" onClick={() => { setActor(t.userId); reset(); }} className="flex w-full justify-between rounded-md px-2 py-1.5 text-xs hover:bg-muted"><span>{u?.name ?? "Unknown"} <span className="text-muted-foreground">· {u ? roleLabel[u.role] : ""}</span></span><strong>{formatNumber(t.count)}</strong></button>; })}
             </div>
           </div>
@@ -108,14 +108,14 @@ export function AuditLogPage() {
         {!ready ? <div className="space-y-2 p-4">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-11" />)}</div> : !list.length ? <EmptyState title="No activity found." detail="Try a different search or filter." /> : <>
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border text-[11px] text-muted-foreground"><tr>
+              <thead className="border-b border-border text-caption text-muted-foreground"><tr>
                 <th className="px-5 py-3 font-semibold">Date & time</th><th className="px-3 py-3 font-semibold">User</th><th className="px-3 py-3 font-semibold">Action</th>
                 <th className="px-3 py-3 font-semibold">Entity</th><th className="px-3 py-3 font-semibold">Reference</th><th className="px-5 py-3 font-semibold">Branch</th>
               </tr></thead>
               <tbody className="divide-y divide-border">{list.slice(0, limit).map((a) => { const u = user(a.actorId); const Icon = entityIcon[a.entity]; return (
                 <tr key={a.id} className="cursor-pointer transition-colors hover:bg-muted/60" onClick={() => setOpen(a)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && setOpen(a)} aria-label={`Open ${a.action}`}>
                   <td className="whitespace-nowrap px-5 py-3 text-muted-foreground">{stamp(a.createdAt)}</td>
-                  <td className="px-3 py-3"><div className="flex items-center gap-2"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-avatar text-[10px] font-bold text-primary">{initials(u?.name ?? "?")}</span><div className="min-w-0"><p className="truncate font-semibold">{u?.name ?? "Unknown"}</p><p className="text-[11px] text-muted-foreground">{u ? roleLabel[u.role] : ""}</p></div></div></td>
+                  <td className="px-3 py-3"><div className="flex items-center gap-2"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-avatar text-caption font-bold text-primary">{initials(u?.name ?? "?")}</span><div className="min-w-0"><p className="truncate font-semibold">{u?.name ?? "Unknown"}</p><p className="text-caption text-muted-foreground">{u ? roleLabel[u.role] : ""}</p></div></div></td>
                   <td className="px-3 py-3 font-semibold">{a.action}</td>
                   <td className="px-3 py-3"><span className="status status-brand inline-flex items-center gap-1 whitespace-nowrap"><Icon className="size-3" />{auditEntityLabel[a.entity]}</span></td>
                   <td className="max-w-[280px] truncate px-3 py-3 text-muted-foreground">{a.entityId && a.entity !== "inventory" ? `${a.entityId} · ` : ""}{a.subject}</td>
@@ -126,7 +126,7 @@ export function AuditLogPage() {
           <ul className="divide-y divide-border md:hidden">{list.slice(0, limit).map((a) => { const u = user(a.actorId); const Icon = entityIcon[a.entity]; return (
             <li key={a.id}><button className="flex w-full items-start gap-3 px-4 py-3 text-left" onClick={() => setOpen(a)}>
               <span className="grid size-9 shrink-0 place-items-center rounded-md bg-muted text-primary"><Icon className="size-4" /></span>
-              <div className="min-w-0 flex-1"><p className="text-xs font-bold">{a.action}</p><p className="truncate text-[11px] text-muted-foreground">{a.subject}</p><p className="mt-1 text-[11px] text-muted-foreground">{u?.name} · {stamp(a.createdAt)}</p></div>
+              <div className="min-w-0 flex-1"><p className="text-xs font-bold">{a.action}</p><p className="truncate text-caption text-muted-foreground">{a.subject}</p><p className="mt-1 text-caption text-muted-foreground">{u?.name} · {stamp(a.createdAt)}</p></div>
             </button></li>); })}</ul>
           {list.length > limit && <div className="border-t border-border p-3 text-center"><button className="text-xs font-semibold text-primary" onClick={() => setLimit((l) => l + 40)}>Show more</button></div>}
         </>}
@@ -156,7 +156,7 @@ export function AuditLogPage() {
         <DetailItem label="Related branch">{bname(row.branchId)}</DetailItem>
         {product && <DetailItem label="Product">{product.name}</DetailItem>}
       </div>
-      <div className="mt-6 rounded-md bg-muted p-4"><p className="text-[11px] text-muted-foreground">Description</p><p className="mt-1 text-sm font-semibold">{row.subject}</p></div>
+      <div className="mt-6 rounded-md bg-muted p-4"><p className="text-caption text-muted-foreground">Description</p><p className="mt-1 text-sm font-semibold">{row.subject}</p></div>
       {row.entity === "sale" && row.entityId && <SaleAuditDetails db={db} saleId={row.entityId} />}
       {row.entity === "exchange" && row.metadata?.saleId && <SaleAuditDetails db={db} saleId={row.metadata.saleId} />}
       {row.entity === "exchange" && <Link to="/exchanges" className="mt-4 inline-block text-xs font-semibold text-primary hover:underline">Open exchanges</Link>}

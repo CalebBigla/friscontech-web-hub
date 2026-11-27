@@ -198,7 +198,7 @@ function OwnerDashboardContent() {
                 {metric.label} · {rangeLabel}
               </p>
               <p className="mt-1 text-2xl font-bold">{metric.value}</p>
-              <p className="mt-2 text-[11px] text-muted-foreground">{metric.detail}</p>
+              <p className="mt-2 text-caption text-muted-foreground">{metric.detail}</p>
             </article>
           );
         })}
@@ -258,7 +258,7 @@ function OwnerDashboardContent() {
               detail="No available units"
             />
           </div>
-          <div className="border-t border-border px-5 py-3 text-[11px] text-muted-foreground">
+          <div className="border-t border-border px-5 py-3 text-caption text-muted-foreground">
             {data.inv.status} · dead stock value {formatCompactNaira(data.dead)}
           </div>
         </Panel>
@@ -270,11 +270,11 @@ function OwnerDashboardContent() {
             <div key={o.id} className="flex flex-col gap-2 p-4 text-xs sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">New staff · {fullName(o.data) || o.employeeId}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-caption text-muted-foreground">
                   {[o.employeeId, o.jobTitle].filter(Boolean).join(" · ")} · Submitted {o.submittedAt ? formatDate(o.submittedAt.slice(0, 10)) : "—"}
                 </p>
               </div>
-              <Button size="sm" variant="outline" onClick={() => setReviewing(o.id)}>Review &amp; approve</Button>
+              <Button size="sm" variant="secondary" onClick={() => setReviewing(o.id)}>Review &amp; approve</Button>
             </div>
           ))}
           {pendingRemittances.map((remittance) => (
@@ -283,7 +283,7 @@ function OwnerDashboardContent() {
                 <p className="truncate font-semibold">
                   Manager remittance · {db.users.find((user) => user.id === remittance.managerId)?.name ?? "Manager"}
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-caption text-muted-foreground">
                   {nameOf(remittance.branchId)} · {remittance.period} · Submitted {formatDate((remittance.submittedAt ?? remittance.createdAt).slice(0, 10))} {formatTime(remittance.submittedAt ?? remittance.createdAt)}
                 </p>
               </div>
@@ -322,13 +322,13 @@ function OwnerDashboardContent() {
                         <p className="truncate text-xs font-semibold">
                           {order.code} · {order.customerName} · {formatNaira(orderTotal(order))}
                         </p>
-                        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                        <p className="mt-0.5 truncate text-caption text-muted-foreground">
                           {order.lines.map((l) => `${productOf(l.productId)} × ${l.quantity}`).join(", ")}
                         </p>
                       </div>
                       <OrderStatusBadge status={order.status} />
                     </div>
-                    <p className="truncate text-[10px] text-muted-foreground">
+                    <p className="truncate text-caption text-muted-foreground">
                       {rep?.name ?? "Sales representative"} · {nameOf(order.branchId)} · {formatDate(order.createdAt)} {formatTime(order.createdAt)}
                     </p>
                   </div>
@@ -356,9 +356,9 @@ function OwnerDashboardContent() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold">{item.action}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">{item.subject}</p>
+                    <p className="truncate text-caption text-muted-foreground">{item.subject}</p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     {formatTime(item.createdAt)}
                   </span>
                 </div>
@@ -367,7 +367,7 @@ function OwnerDashboardContent() {
         </article>
       </section>
 
-      <div className="mt-5 flex items-center gap-2 text-[10px] text-muted-foreground">
+      <div className="mt-5 flex items-center gap-2 text-caption text-muted-foreground">
         <ShieldCheck className="size-3" />
         Viewing tenant-scoped data for {db.tenant.name}
       </div>

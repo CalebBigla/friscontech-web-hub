@@ -109,12 +109,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 /**
- * The Manrope stylesheet is added from a script instead of a <link> in the head: a
+ * The Inter stylesheet is added from a script instead of a <link> in the head: a
  * head stylesheet blocks the first paint until Google Fonts answers (about 0.7 s
  * measured from Lagos). Inserted this way it loads in parallel; text shows in the
- * system fallback until Manrope arrives (font-display: swap), then switches.
+ * system fallback until Inter arrives (font-display: swap), then switches.
  */
-const FONT_STYLESHEET = "https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap";
+const FONT_STYLESHEET = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap";
 const FONT_LOAD_SCRIPT = `(function(){var l=document.createElement("link");l.rel="stylesheet";l.href="${FONT_STYLESHEET}";document.head.appendChild(l);})();`;
 
 function RootShell({ children }: { children: ReactNode }) {

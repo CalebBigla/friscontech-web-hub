@@ -44,7 +44,7 @@ export function NotificationBell() {
         >
           <Bell className="size-4" />
           {unread > 0 && (
-            <span className="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-bold leading-4 text-destructive-foreground">
+            <span className="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-destructive px-1 text-caption font-bold leading-4 text-destructive-foreground">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
@@ -54,7 +54,7 @@ export function NotificationBell() {
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <p className="text-sm font-bold">Notifications</p>
-            <p className="text-[11px] text-muted-foreground">{unread} unread</p>
+            <p className="text-caption text-muted-foreground">{unread} unread</p>
           </div>
           {unread > 0 && (
             <Button
@@ -87,7 +87,7 @@ export function NotificationBell() {
                 />
                 <span className="min-w-0">
                   <span className="block text-xs font-semibold leading-snug">{n.message}</span>
-                  <span className="mt-1 block text-[10px] text-muted-foreground">
+                  <span className="mt-1 block text-caption text-muted-foreground">
                     {formatDayTime(n.createdAt, referenceDate)}
                   </span>
                 </span>

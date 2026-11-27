@@ -41,7 +41,7 @@ export function BranchDetailsPage({ branchId }: { branchId: string }) {
       <AppShell title="Branch not found">
         <EmptyState title="Branch not found" detail="It may have been removed or the link is incorrect." />
         <div className="text-center">
-          <Button variant="outline" asChild>
+          <Button variant="secondary" asChild>
             <Link to="/branches">Back to branches</Link>
           </Button>
         </div>
@@ -71,8 +71,8 @@ export function BranchDetailsPage({ branchId }: { branchId: string }) {
   return (
     <AppShell title={branch.name} subtitle={`${branch.code} · ${branch.location}`}
       actions={scope.canManageBranches && <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setEditOpen(true)}><Pencil className="size-4" /><span className="hidden sm:inline">Edit</span></Button>
-        {branch.status === "active" && <Button variant="outline" className="text-destructive" onClick={() => setDeactivateOpen(true)}><Power className="size-4" /><span className="hidden sm:inline">Deactivate</span></Button>}
+        <Button variant="secondary" onClick={() => setEditOpen(true)}><Pencil className="size-4" /><span className="hidden sm:inline">Edit</span></Button>
+        {branch.status === "active" && <Button variant="secondary" className="text-destructive" onClick={() => setDeactivateOpen(true)}><Power className="size-4" /><span className="hidden sm:inline">Deactivate</span></Button>}
       </div>}>
       <Link to="/branches" className="mb-4 inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3" />All branches</Link>
       <div className="mb-5 flex flex-col gap-3 rounded-lg border border-border bg-card p-5 shadow-panel sm:flex-row sm:items-center sm:justify-between">
@@ -97,27 +97,27 @@ export function BranchDetailsPage({ branchId }: { branchId: string }) {
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <Panel title="Branch performance" subtitle={`Target achievement for ${formatMonth(month)}`} action={<BandBadge band={perf.band} />}>
           <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-4">
-            {[["Monthly revenue", formatNaira(perf.revenue)], ["Monthly target", formatNaira(perf.target)], ["Achievement", formatPercent(perf.achievement, 2)], ["Remaining target", formatNaira(perf.remaining)]].map(([k, v]) => <div key={k}><p className="text-[11px] text-muted-foreground">{k}</p><p className="mt-1 text-base font-bold">{v}</p></div>)}
+            {[["Monthly revenue", formatNaira(perf.revenue)], ["Monthly target", formatNaira(perf.target)], ["Achievement", formatPercent(perf.achievement, 2)], ["Remaining target", formatNaira(perf.remaining)]].map(([k, v]) => <div key={k}><p className="text-caption text-muted-foreground">{k}</p><p className="mt-1 text-base font-bold">{v}</p></div>)}
           </div>
           <div className="px-5 pb-5"><ProgressBar value={perf.achievement} band={perf.band} /></div>
         </Panel>
         <Panel title="Inventory summary" subtitle="From branch stock records" action={<Button variant="ghost" size="sm" asChild><Link to="/inventory" search={{ branch: branch.id }}>View inventory</Link></Button>}>
           <div className="grid grid-cols-2 gap-4 p-5">
-            {[["Total products", String(inv.total)], ["Low stock", String(inv.low)], ["Out of stock", String(inv.out)], ["Units on hand", inv.units.toLocaleString("en-NG")], ["Inventory value", formatNaira(inv.value)], ["Inventory health", `${formatPercent(inv.healthPct, 0)} · ${inv.status}`]].map(([k, v]) => <div key={k}><p className="text-[11px] text-muted-foreground">{k}</p><p className="mt-1 text-base font-bold">{v}</p></div>)}
+            {[["Total products", String(inv.total)], ["Low stock", String(inv.low)], ["Out of stock", String(inv.out)], ["Units on hand", inv.units.toLocaleString("en-NG")], ["Inventory value", formatNaira(inv.value)], ["Inventory health", `${formatPercent(inv.healthPct, 0)} · ${inv.status}`]].map(([k, v]) => <div key={k}><p className="text-caption text-muted-foreground">{k}</p><p className="mt-1 text-base font-bold">{v}</p></div>)}
           </div>
         </Panel>
       </section>
 
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.4fr_1fr]">
         <Panel title="Recent sales" subtitle={scope.repId ? "Your latest sales at this branch" : "Latest transactions at this branch"} className="overflow-hidden"
-          action={scope.canViewSales && <Button variant="outline" size="sm" asChild><Link to="/sales" search={{ branch: branch.id }}>View All Sales</Link></Button>}>
+          action={scope.canViewSales && <Button variant="secondary" size="sm" asChild><Link to="/sales" search={{ branch: branch.id }}>View All Sales</Link></Button>}>
           {scope.canViewSales ? (sales.length ? (
-            <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left"><thead><tr className="text-[10px] uppercase text-muted-foreground"><th className="px-5 py-3">Sales rep</th><th className="px-5 py-3">Product</th><th className="px-5 py-3">Qty</th><th className="px-5 py-3">Revenue</th><th className="px-5 py-3 text-right">Date</th></tr></thead>
+            <div className="overflow-x-auto"><table className="w-full min-w-[560px] text-left"><thead><tr className="text-caption uppercase text-muted-foreground"><th className="px-5 py-3">Sales rep</th><th className="px-5 py-3">Product</th><th className="px-5 py-3">Qty</th><th className="px-5 py-3">Revenue</th><th className="px-5 py-3 text-right">Date</th></tr></thead>
               <tbody>{sales.map((s) => <tr key={s.id} className="border-t border-border text-xs"><td className="px-5 py-3 font-semibold">{userName(s.salesRepId)}</td><td className="px-5 py-3 text-muted-foreground">{productName(s.productId)}</td><td className="px-5 py-3">{s.quantity}</td><td className="px-5 py-3 font-bold">{formatNaira(saleTotal(s))}</td><td className="px-5 py-3 text-right text-muted-foreground">{formatDate(s.saleDate)}</td></tr>)}</tbody></table></div>
           ) : <EmptyState title="No sales yet" />) : <EmptyState title="Sales are not available for your role" />}
         </Panel>
         <Panel title="Branch staff" subtitle={`${staff.length} team members`}>
-          <div className="divide-y divide-border">{staff.map((s) => <div key={s.id} className="flex items-center gap-3 px-5 py-3"><span className="grid size-8 place-items-center rounded-full bg-avatar text-[11px] font-bold text-primary">{initials(s.name)}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold">{s.name}</p><p className="text-[11px] text-muted-foreground">{roleLabel[s.role]}</p></div>{s.role === "manager" && <UserRound className="size-4 text-primary" />}</div>)}
+          <div className="divide-y divide-border">{staff.map((s) => <div key={s.id} className="flex items-center gap-3 px-5 py-3"><span className="grid size-8 place-items-center rounded-full bg-avatar text-caption font-bold text-primary">{initials(s.name)}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold">{s.name}</p><p className="text-caption text-muted-foreground">{roleLabel[s.role]}</p></div>{s.role === "manager" && <UserRound className="size-4 text-primary" />}</div>)}
             {staff.length === 0 && <EmptyState title="No staff assigned" />}</div>
         </Panel>
       </section>

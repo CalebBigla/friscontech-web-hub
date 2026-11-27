@@ -85,7 +85,7 @@ function AuthFrame({ title, subtitle, children, footer }: { title: string; subti
           <h2 className="text-3xl font-semibold leading-tight tracking-tight xl:text-4xl">
             Sales, stock and teams, <span style={{ color: ORANGE }}>working as one.</span>
           </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-white/75">
+          <p className="mt-4 text-section leading-relaxed text-white/75">
             Run every branch from one place, with clear numbers and clear responsibilities.
           </p>
           <ul className="mt-10 space-y-6">
@@ -115,7 +115,7 @@ function AuthFrame({ title, subtitle, children, footer }: { title: string; subti
         <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
           <div className="w-full max-w-[400px]">
             <div className="mb-8">
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-metric">{title}</h1>
               {subtitle && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>}
             </div>
             {children}
@@ -145,7 +145,7 @@ function Field({ id, label, type = "text", value, onChange, auto, reveal = false
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
-        <Label htmlFor={id} className="text-[13px] font-medium">{label}</Label>
+        <Label htmlFor={id} className="text-label font-medium">{label}</Label>
         {action}
       </div>
       <div className="relative mt-2">
@@ -157,7 +157,7 @@ function Field({ id, label, type = "text", value, onChange, auto, reveal = false
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
-          className={`h-11 bg-card text-[15px] shadow-sm sm:text-sm ${Icon ? "pl-10" : ""} ${reveal ? "pr-11" : ""}`}
+          className={`h-11 bg-card text-section shadow-sm sm:text-sm ${Icon ? "pl-10" : ""} ${reveal ? "pr-11" : ""}`}
           required
         />
         {reveal && type === "password" && (
@@ -195,7 +195,7 @@ const Err = ({ msg }: { msg: string }) => (msg ? <Message tone="error">{msg}</Me
 
 function SubmitButton({ busy, children }: { busy: boolean; children: ReactNode }) {
   return (
-    <Button type="submit" className="h-11 w-full text-[15px] font-semibold shadow-sm sm:text-sm" disabled={busy}>
+    <Button type="submit" className="h-11 w-full text-section font-semibold shadow-sm sm:text-sm" disabled={busy}>
       {busy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
       {children}
     </Button>
@@ -293,7 +293,7 @@ export function LoginPage() {
           value={f.pw}
           onChange={(v) => setF({ ...f, pw: v })}
           reveal
-          action={!setup && <Link to="/forgot-password" className={`text-[13px] ${linkClass}`}>Forgot password?</Link>}
+          action={!setup && <Link to="/forgot-password" className={`text-label ${linkClass}`}>Forgot password?</Link>}
         />
         {setup && <Field id="pw2" label="Confirm password" type="password" auto="new-password" icon={Lock} value={f.confirm} onChange={(v) => setF({ ...f, confirm: v })} reveal />}
         {notice && <Message tone="info">{notice}</Message>}

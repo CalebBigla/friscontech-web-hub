@@ -16,7 +16,7 @@ import { formatDate, formatNaira, formatNumber } from "@/lib/format";
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-6">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <div className="mt-2 rounded-lg border border-border p-4">{children}</div>
     </section>
   );

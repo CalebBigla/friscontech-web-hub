@@ -119,7 +119,7 @@ export function RevenueTrendChart({ data }: { data: RevenuePoint[] }) {
           ) : null}
         </ComposedChart>
       </ChartContainer>
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-3 text-[11px]">
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-3 text-caption">
         <span className="flex items-center gap-2 font-medium">
           <span className="size-2 rounded-full bg-primary" />
           Actual revenue

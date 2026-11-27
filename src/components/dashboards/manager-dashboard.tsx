@@ -124,7 +124,7 @@ function ManagerDashboardContent() {
                         ? "Product deactivation"
                         : "Team member request"}
                   </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                  <p className="truncate text-caption text-muted-foreground">
                     {item.id} ·{" "}
                     {db.products.find((product) => product.id === item.productId)?.name ??
                       "Review request"}
@@ -146,7 +146,7 @@ function ManagerDashboardContent() {
                 <span className="font-semibold text-primary">View</span>
               </Link>
             )}
-            <Button variant="outline" size="sm" className="w-full" asChild>
+            <Button variant="secondary" size="sm" className="w-full" asChild>
               <Link to="/approvals">Open approvals</Link>
             </Button>
           </div>
@@ -182,7 +182,7 @@ function ManagerDashboardContent() {
                 {low} low · {out} out of stock
               </p>
             </div>
-            <Button className="ml-auto" size="sm" variant="outline" asChild>
+            <Button className="ml-auto" size="sm" variant="secondary" asChild>
               <Link to="/inventory">
                 <ClipboardList className="size-4" />
                 Inventory

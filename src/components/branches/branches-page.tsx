@@ -123,14 +123,14 @@ export function BranchesPage() {
         </div>}>
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[980px] text-left">
-            <thead><tr className="text-[10px] uppercase text-muted-foreground">
+            <thead><tr className="text-caption uppercase text-muted-foreground">
               <SortHead k="name" label="Branch" /><th className="px-4 py-3">Code</th><th className="px-4 py-3">Location</th><th className="px-4 py-3">Manager</th>
               <SortHead k="staff" label="Staff" /><SortHead k="revenue" label="Revenue" /><SortHead k="target" label="Target" /><SortHead k="achievement" label="Performance" /><SortHead k="status" label="Status" /><th className="px-4 py-3 text-right">Actions</th>
             </tr></thead>
             <tbody>{visible.map((r) => (
               <tr key={r.branch.id} className="border-t border-border text-xs">
                 <td className="px-4 py-3.5 font-bold"><Link to="/branches/$branchId" params={{ branchId: r.branch.id }} className="hover:text-primary">{r.branch.name}</Link></td>
-                <td className="px-4 py-3.5 font-mono text-[11px] text-muted-foreground">{r.branch.code}</td>
+                <td className="px-4 py-3.5 font-mono text-caption text-muted-foreground">{r.branch.code}</td>
                 <td className="px-4 py-3.5 text-muted-foreground">{r.branch.location}</td>
                 <td className="px-4 py-3.5">{r.manager?.name ?? "Unassigned"}</td>
                 <td className="px-4 py-3.5 font-semibold">{r.staff}</td>
@@ -145,15 +145,15 @@ export function BranchesPage() {
         <div className="divide-y divide-border md:hidden">{visible.map((r) => (
           <div key={r.branch.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0"><Link to="/branches/$branchId" params={{ branchId: r.branch.id }} className="text-sm font-bold">{r.branch.name}</Link><p className="text-[11px] text-muted-foreground">{r.branch.code} · {r.branch.location}</p></div>
+              <div className="min-w-0"><Link to="/branches/$branchId" params={{ branchId: r.branch.id }} className="text-sm font-bold">{r.branch.name}</Link><p className="text-caption text-muted-foreground">{r.branch.code} · {r.branch.location}</p></div>
               <div className="flex items-center gap-1"><BranchStatusBadge status={r.branch.status} />{actions(r.branch)}</div>
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
+            <div className="mt-3 grid grid-cols-3 gap-2 text-caption">
               <div><p className="text-muted-foreground">Revenue</p><p className="font-bold">{formatNaira(r.revenue)}</p></div>
               <div><p className="text-muted-foreground">Target</p><p className="font-bold">{formatNaira(r.target)}</p></div>
               <div><p className="text-muted-foreground">Performance</p><p className="font-bold">{formatPercent(r.achievement, 2)}</p></div>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">{r.manager?.name ?? "Unassigned"} · {r.staff} staff</p>
+            <p className="mt-2 text-caption text-muted-foreground">{r.manager?.name ?? "Unassigned"} · {r.staff} staff</p>
           </div>))}</div>
         {visible.length === 0 && <EmptyState title="No branches found" detail="Try a different search or clear the filters." />}
       </Panel>

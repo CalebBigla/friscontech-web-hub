@@ -8,12 +8,12 @@ import { formatDate, formatNumber } from "@/lib/format";
 const tierTone = { expired: "status-danger", "1m": "status-danger", "3m": "status-warning", "6m": "status-brand" } as const;
 
 export function ExpiryBadge({ db, expiryDate }: { db: Db; expiryDate: string | null | undefined }) {
-  if (!expiryDate) return <span className="text-[11px] text-muted-foreground">—</span>;
+  if (!expiryDate) return <span className="text-caption text-muted-foreground">—</span>;
   const tier = expiryTier(db, expiryDate);
   const days = daysToExpiry(db, expiryDate);
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
-      <span className="text-[11px]">{formatDate(expiryDate)}</span>
+      <span className="text-caption">{formatDate(expiryDate)}</span>
       {tier ? <span className={`status whitespace-nowrap ${tierTone[tier]}`}>{tier === "expired" ? "Expired" : `${expiryTierLabel[tier]} · ${days}d`}</span> : <span className="status status-success">OK</span>}
     </span>
   );
@@ -36,14 +36,14 @@ export function ExpiringSoonPanel({ db, branchIds, className = "mt-4" }: { db: D
     <Panel title="Expiring soon" subtitle={`Batches expiring within ${db.tenant.expiryAlertMonths} months, or already expired`} className={className} action={<CalendarClock className="size-4 text-muted-foreground" />}>
       <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-4">
         {tiles.map((t, index) => (
-          <div key={index} className="rounded-md border border-border p-3"><p className="text-[11px] text-muted-foreground">{t.label}</p><p className={`mt-1 text-lg font-bold ${t.tone}`}>{formatNumber(t.value)}</p></div>
+          <div key={index} className="rounded-md border border-border p-3"><p className="text-caption text-muted-foreground">{t.label}</p><p className={`mt-1 text-lg font-bold ${t.tone}`}>{formatNumber(t.value)}</p></div>
         ))}
       </div>
       {s.alerts.length ? (
         <ul className="divide-y divide-border border-t border-border">
           {s.alerts.slice(0, 6).map((a) => (
             <li key={a.batch.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs">
-              <div className="min-w-0"><p className="truncate font-bold">{a.productName}</p><p className="truncate text-[11px] text-muted-foreground">{a.branchName} · batch {a.batch.batchNumber} · {formatNumber(a.batch.quantityRemaining)} left</p></div>
+              <div className="min-w-0"><p className="truncate font-bold">{a.productName}</p><p className="truncate text-caption text-muted-foreground">{a.branchName} · batch {a.batch.batchNumber} · {formatNumber(a.batch.quantityRemaining)} left</p></div>
               <ExpiryBadge db={db} expiryDate={a.batch.expiryDate} />
             </li>
           ))}

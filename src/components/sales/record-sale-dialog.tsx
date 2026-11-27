@@ -264,7 +264,7 @@ export function RecordSaleDialog({
             </div>
           </div>
           {(
-            <p className="rounded-md bg-muted px-3 py-2 text-[11px] text-muted-foreground">
+            <p className="rounded-md bg-muted px-3 py-2 text-caption text-muted-foreground">
               Recorded as <strong className="text-foreground">{scope.user.name}</strong>.
             </p>
           )}
@@ -315,7 +315,7 @@ export function RecordSaleDialog({
                     </div>
                     <FieldError message={itemErrors?.productId} />
                     {branchId && line.productId && (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
+                      <p className="mt-1 text-caption text-muted-foreground">
                         {`Available at branch: ${formatUnits(getAvailableStock(db, line.productId, branchId))}`}
                       </p>
                     )}
@@ -398,7 +398,7 @@ export function RecordSaleDialog({
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => {
                   setLines((rows) => [...rows, newLine(nextKey)]);
@@ -411,7 +411,7 @@ export function RecordSaleDialog({
               {hasPromoItems && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => {
                     setLines((rows) => [...rows, newLine(nextKey, true)]);
@@ -429,7 +429,7 @@ export function RecordSaleDialog({
             <span className="text-xs text-muted-foreground">
               Total revenue
               {discountTotal > 0 && (
-                <span className="block text-[11px]">After {formatNaira(discountTotal)} discount</span>
+                <span className="block text-caption">After {formatNaira(discountTotal)} discount</span>
               )}
             </span>
             <strong className="text-lg" data-testid="sale-total">
@@ -437,7 +437,7 @@ export function RecordSaleDialog({
             </strong>
           </div>
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={saving}>

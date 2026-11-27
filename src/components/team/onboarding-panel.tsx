@@ -124,7 +124,7 @@ export function OnboardingPanel({ member, scope }: { member: User; scope: Access
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {link !== "used" && (
-                <Button size="sm" variant="outline" disabled={!!busy}
+                <Button size="sm" variant="secondary" disabled={!!busy}
                   onClick={async () => {
                     setBusy("regen");
                     const r = await onboardingService.regenerate(o.id, scope.user.id);
@@ -140,11 +140,11 @@ export function OnboardingPanel({ member, scope }: { member: User; scope: Access
                 ><RefreshCw className="size-4" />New link</Button>
               )}
               {link === "valid" && (
-                <Button size="sm" variant="outline" disabled={!!busy}
+                <Button size="sm" variant="secondary" disabled={!!busy}
                   onClick={() => run("revoke", () => onboardingService.revoke(o.id, scope.user.id), "Link revoked")}
                 ><Ban className="size-4" />Revoke</Button>
               )}
-              <Button size="sm" variant="outline" onClick={() => setJobOpen(true)}>Edit job details</Button>
+              <Button size="sm" variant="secondary" onClick={() => setJobOpen(true)}>Edit job details</Button>
             </div>
           </div>
         )}
@@ -153,7 +153,7 @@ export function OnboardingPanel({ member, scope }: { member: User; scope: Access
         {owner && o.guarantorToken && o.guarantorStatus !== "completed" && (
           <div className="flex gap-2">
             <Input readOnly value={guarantorUrl(o.guarantorToken)} className="h-9 font-mono text-xs" />
-            <Button size="sm" variant="outline" onClick={() => copyText(guarantorUrl(o.guarantorToken!), "Guarantor link copied")}><Copy className="size-4" />Guarantor link</Button>
+            <Button size="sm" variant="secondary" onClick={() => copyText(guarantorUrl(o.guarantorToken!), "Guarantor link copied")}><Copy className="size-4" />Guarantor link</Button>
           </div>
         )}
 
@@ -183,10 +183,10 @@ function JobDialog({ open, onOpenChange, o, actorId, onRefresh }: { open: boolea
           <div><Label className="text-xs">Job title</Label><Input className="mt-1.5 h-9" value={f.jobTitle} onChange={(e) => setF({ ...f, jobTitle: e.target.value })} /></div>
           <div><Label className="text-xs">Department</Label><Input className="mt-1.5 h-9" value={f.department} onChange={(e) => setF({ ...f, department: e.target.value })} /></div>
           <div><Label className="text-xs">Start date</Label><Input type="date" className="mt-1.5 h-9" value={f.startDate} onChange={(e) => setF({ ...f, startDate: e.target.value })} /></div>
-          {err && <p className="text-[11px] font-medium text-destructive">{err}</p>}
+          {err && <p className="text-caption font-medium text-destructive">{err}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={async () => {
             const r = await onboardingService.updateJob(o.id, f, actorId);
             if (!r.ok) { setErr(r.errors.form ?? "Failed"); return; }

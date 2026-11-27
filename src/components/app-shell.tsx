@@ -339,8 +339,8 @@ export function AppShell({
               <Activity className="size-4" />
             </span>
             <div className={`min-w-0 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
-              <p className="truncate text-[15px] font-semibold tracking-tight">{BRAND_NAME}</p>
-              <p className="truncate text-[11px] text-muted-foreground">
+              <p className="truncate text-section font-semibold tracking-tight">{BRAND_NAME}</p>
+              <p className="truncate text-caption text-muted-foreground">
                 {tenant?.name ?? `${roleLabel[scope.user.role]} console`}
               </p>
             </div>
@@ -383,7 +383,7 @@ export function AppShell({
               return (
                 <div key={section.title}>
                   <p
-                    className={`px-3 pb-1.5 pt-5 text-[11px] font-medium tracking-wide text-muted-foreground/80 first:pt-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}
+                    className={`px-3 pb-1.5 pt-5 text-caption font-medium tracking-wide text-muted-foreground/80 first:pt-1 ${sidebarCollapsed ? "lg:hidden" : ""}`}
                   >
                     {section.title}
                   </p>
@@ -396,7 +396,7 @@ export function AppShell({
                               to={to}
                               onClick={() => setOpen(false)}
                               activeOptions={{ exact: to === "/" }}
-                              className={`group relative flex h-9 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
+                              className={`group relative flex h-9 items-center gap-2.5 rounded-lg px-3 text-label font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${sidebarCollapsed ? "lg:justify-center lg:px-0" : ""}`}
                               activeProps={{ className: "!bg-sidebar-accent !text-sidebar-accent-foreground !font-semibold before:absolute before:inset-y-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-primary" }}
                               aria-label={sidebarCollapsed ? label : undefined}
                             >
@@ -419,7 +419,7 @@ export function AppShell({
                         >
                           <Icon className="size-4" />
                           {label}
-                          <span className="ml-auto text-[9px] font-bold uppercase text-muted-foreground">
+                          <span className="ml-auto text-caption font-bold uppercase text-muted-foreground">
                             Soon
                           </span>
                         </Button>
@@ -440,8 +440,8 @@ export function AppShell({
               >
                 <UserAvatar name={scope.user.name ?? ""} src={photos[userId]} />
                 <div className={sidebarCollapsed ? "min-w-0 lg:hidden" : "min-w-0"}>
-                  <p className="truncate text-[13px] font-semibold">{scope.user.name ?? "—"}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                  <p className="truncate text-label font-semibold">{scope.user.name ?? "—"}</p>
+                  <p className="truncate text-caption text-muted-foreground">
                     {roleLabel[scope.user.role]} · {branch?.name ?? tenant?.name ?? ""}
                   </p>
                 </div>
@@ -479,9 +479,9 @@ export function AppShell({
             <Menu className="size-5" />
           </Button>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[15px] font-semibold tracking-tight sm:text-lg">{title}</h1>
+            <h1 className="truncate text-section font-semibold tracking-tight sm:text-lg">{title}</h1>
             {subtitle && (
-              <p className="hidden truncate text-[13px] text-muted-foreground sm:block">{subtitle}</p>
+              <p className="hidden truncate text-label text-muted-foreground sm:block">{subtitle}</p>
             )}
           </div>
           {headerExtra}
@@ -507,7 +507,7 @@ export function AppShell({
               key={to}
               to={to}
               activeOptions={{ exact: to === "/" }}
-              className="relative flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium text-muted-foreground transition-colors"
+              className="relative flex min-h-14 flex-col items-center justify-center gap-1 text-caption font-medium text-muted-foreground transition-colors"
               activeProps={{ className: "!text-primary before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:rounded-b-full before:bg-primary" }}
             >
               <Icon className="size-5" />
@@ -517,7 +517,7 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground"
+            className="flex min-h-14 flex-col items-center justify-center gap-1 text-caption font-semibold text-muted-foreground"
           >
             <Menu className="size-5" />
             More
@@ -545,7 +545,7 @@ export function ThemeToggle() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-36">
         {options.map(({ value, label, icon: Icon }) => (
-          <DropdownMenuItem key={value} onClick={() => setTheme(value)} className="gap-2 text-[13px]">
+          <DropdownMenuItem key={value} onClick={() => setTheme(value)} className="gap-2 text-label">
             <Icon className="size-4" />
             {label}
             {choice === value && <Check className="ml-auto size-4 text-primary" />}

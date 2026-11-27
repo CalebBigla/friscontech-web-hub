@@ -155,7 +155,7 @@ export function ConvertToPromoDialog({ open, onOpenChange, db, scope }: {
                           <Checkbox id={`promo-${p.id}`} checked={on} onCheckedChange={(v) => toggle(p.id, v === true)} />
                           <label htmlFor={`promo-${p.id}`} className="min-w-0 flex-1 cursor-pointer text-xs">
                             <span className="block truncate font-semibold">{p.name}</span>
-                            <span className="text-[11px] text-muted-foreground">{p.sku} · {formatNumber(available(p.id))} available</span>
+                            <span className="text-caption text-muted-foreground">{p.sku} · {formatNumber(available(p.id))} available</span>
                           </label>
                           {on && (
                             <Input aria-label={`Units of ${p.name} to move to promo`} type="number" inputMode="numeric" min={1} step={1}
@@ -190,9 +190,9 @@ export function ConvertToPromoDialog({ open, onOpenChange, db, scope }: {
         <FieldError message={errors.form} />
         <DialogFooter className="gap-2">
           {reviewing ? (
-            <Button type="button" variant="outline" onClick={() => setReviewing(false)}><ArrowLeft className="size-4" />Back</Button>
+            <Button type="button" variant="secondary" onClick={() => setReviewing(false)}><ArrowLeft className="size-4" />Back</Button>
           ) : (
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
           )}
           <Button type="button" disabled={convert.isPending || !branchId} onClick={() => void submit()}>
             {convert.isPending ? <Loader2 className="size-4 animate-spin" /> : reviewing ? <Gift className="size-4" /> : null}

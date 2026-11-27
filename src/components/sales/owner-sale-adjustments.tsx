@@ -76,7 +76,7 @@ export function OwnerSaleAdjustments({ db, sale, onChanged }: { db: Db; sale: Sa
 
   return (
     <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Owner adjustments</p>
+      <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Owner adjustments</p>
 
       <form onSubmit={(e) => void submitDiscount(e)} className="space-y-2" noValidate>
         <Label htmlFor="owner-discount" className="text-xs">Discount on this line</Label>
@@ -101,7 +101,7 @@ export function OwnerSaleAdjustments({ db, sale, onChanged }: { db: Db; sale: Sa
             {applyDiscount.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Percent className="size-3.5" />}Apply
           </Button>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           {numeric > 0 && Number.isFinite(numeric)
             ? `${formatNaira(Math.min(preview, gross))} off · line total ${formatNaira(Math.max(gross - preview, 0))}`
             : `List price ${formatNaira(gross)}`}
@@ -135,7 +135,7 @@ export function OwnerSaleAdjustments({ db, sale, onChanged }: { db: Db; sale: Sa
               onChange={(e) => setPromoQty(e.target.value.replace(/\D/g, ""))}
               className="h-9 w-16 shrink-0"
             />
-            <Button type="submit" size="sm" variant="outline" className="h-9" disabled={addPromo.isPending}>
+            <Button type="submit" size="sm" variant="secondary" className="h-9" disabled={addPromo.isPending}>
               {addPromo.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Gift className="size-3.5" />}Add
             </Button>
           </div>

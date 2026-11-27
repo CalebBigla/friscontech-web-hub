@@ -38,7 +38,7 @@ export function BranchTargetsPanel({ db, scope, month, onSet, onEdit, className 
                 {target
                   ? <Link to="/targets/$targetId" params={{ targetId: target.id }} className="truncate text-sm font-bold hover:text-primary">{branch.name}</Link>
                   : <p className="truncate text-sm font-bold">{branch.name}</p>}
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-caption text-muted-foreground">
                   {p ? <><span className="font-semibold text-foreground">{formatCompactNaira(p.achieved)}</span> of {formatCompactNaira(p.amount)}</> : "No target set"}
                 </p>
               </div>
@@ -46,7 +46,7 @@ export function BranchTargetsPanel({ db, scope, month, onSet, onEdit, className 
                 <>
                   <div className="min-w-0 flex-1"><TargetProgressBar p={p} /></div>
                   <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <span className="text-[11px] text-muted-foreground sm:w-32 sm:text-right">{p.remaining > 0 ? `${formatNaira(p.remaining)} to go` : "Target reached"}</span>
+                    <span className="text-caption text-muted-foreground sm:w-32 sm:text-right">{p.remaining > 0 ? `${formatNaira(p.remaining)} to go` : "Target reached"}</span>
                     <TargetStatusBadge status={p.status} />
                     {canEdit && target && <Button variant="ghost" size="icon" className="size-8" aria-label={`Edit ${branch.name} target`} onClick={() => onEdit(target)}><Pencil className="size-4" /></Button>}
                   </div>
@@ -54,7 +54,7 @@ export function BranchTargetsPanel({ db, scope, month, onSet, onEdit, className 
               ) : (
                 <div className="flex flex-1 items-center justify-between gap-3 sm:justify-end">
                   <div className="hidden h-1.5 flex-1 rounded-full bg-muted sm:block" aria-hidden />
-                  {canEdit && <Button variant="outline" size="sm" onClick={() => onSet(branch.id)}><Plus className="size-4" />Set target</Button>}
+                  {canEdit && <Button variant="secondary" size="sm" onClick={() => onSet(branch.id)}><Plus className="size-4" />Set target</Button>}
                 </div>
               )}
             </div>

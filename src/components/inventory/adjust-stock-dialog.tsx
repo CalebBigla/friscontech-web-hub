@@ -65,11 +65,11 @@ export function AdjustStockDialog({ record, productName, onClose }: { record: In
             <div><p className="text-muted-foreground">Change</p><p className={`mt-1 text-base font-bold ${delta > 0 ? "text-success" : "text-destructive"}`}>{delta > 0 ? "+" : "−"}{Math.abs(delta)}</p></div>
             <div><p className="text-muted-foreground">New on hand</p><p className="mt-1 text-base font-bold">{n}</p></div>
             <div className="col-span-3 flex items-center justify-between border-t border-border pt-3"><span className="text-muted-foreground">Status after</span><StockStatusBadge status={getInventoryStatus({ ...record, quantityOnHand: n })} /></div>
-            <p className="col-span-3 text-[11px] text-muted-foreground">Reason: {reason}</p>
+            <p className="col-span-3 text-caption text-muted-foreground">Reason: {reason}</p>
           </div>
         )}
         <DialogFooter className="gap-2">
-          {confirming ? <Button variant="outline" onClick={() => setConfirming(false)}>Back</Button> : <Button variant="outline" onClick={onClose}>Cancel</Button>}
+          {confirming ? <Button variant="secondary" onClick={() => setConfirming(false)}>Back</Button> : <Button variant="secondary" onClick={onClose}>Cancel</Button>}
           {confirming ? <Button onClick={confirm} disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />}Confirm adjustment</Button> : <Button onClick={review}>Review change</Button>}
         </DialogFooter>
       </DialogContent>

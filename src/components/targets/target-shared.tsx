@@ -10,7 +10,7 @@ export function TargetProgressBar({ p }: { p: TargetProgress }) {
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-full min-w-16 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${barTone[p.status]}`} style={{ width: `${p.progress}%` }} /></div>
-      <span className="w-11 shrink-0 text-right text-[11px] font-semibold">{progressLabel(p)}</span>
+      <span className="w-11 shrink-0 text-right text-caption font-semibold">{progressLabel(p)}</span>
     </div>
   );
 }

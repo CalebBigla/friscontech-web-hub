@@ -98,7 +98,7 @@ export function BranchFormDialog({ open, onOpenChange, branch }: { open: boolean
           </fieldset>
           <FieldError message={errors.form} />
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={saving || branchesLoading || usersLoading}>{(saving || branchesLoading || usersLoading) && <Loader2 className="size-4 animate-spin" />}{branch ? "Save changes" : "Create branch"}</Button>
           </DialogFooter>
         </form>

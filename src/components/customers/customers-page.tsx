@@ -131,7 +131,7 @@ export function CustomersPage() {
         </div>
         <div className="flex gap-2">
           {canDownload && (
-            <Button size="sm" variant="outline" disabled={exporting || !rows.length} onClick={() => void downloadExcel()}>
+            <Button size="sm" variant="secondary" disabled={exporting || !rows.length} onClick={() => void downloadExcel()}>
               {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
               Download Excel
             </Button>
@@ -196,13 +196,13 @@ export function CustomersPage() {
               ["Awaiting confirmation", formatNaira(repTotals.pending), "text-warning"],
             ].map(([label, value, tone]) => (
               <div key={label} className="rounded-lg bg-muted/50 p-3">
-                <dt className="text-[11px] text-muted-foreground">{label}</dt>
+                <dt className="text-caption text-muted-foreground">{label}</dt>
                 <dd className={`mt-1 text-base font-bold tabular-nums ${tone}`}>{value}</dd>
               </div>
             ))}
           </dl>
           {repTotals.inCredit > 0 && (
-            <p className="mt-2 text-[11px] text-muted-foreground">Customers in credit hold {formatNaira(repTotals.inCredit)} more than their debt.</p>
+            <p className="mt-2 text-caption text-muted-foreground">Customers in credit hold {formatNaira(repTotals.inCredit)} more than their debt.</p>
           )}
         </section>
       )}
@@ -273,7 +273,7 @@ export function CustomersPage() {
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[10px] uppercase text-muted-foreground">
+              <thead className="border-b border-border bg-muted/40 text-caption uppercase text-muted-foreground">
                 <tr>
                   {["Customer", "Phone", "Branch", ...(isOwner ? ["Sales rep"] : []), "Orders", "Balance", ""].map((h) => (
                     <th key={h} className="px-4 py-3 font-semibold">
@@ -298,7 +298,7 @@ export function CustomersPage() {
                   >
                     <td className="px-4 py-3">
                       <p className="font-semibold">{c.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-caption text-muted-foreground">
                         {c.contactPerson || c.email || "—"}
                       </p>
                     </td>

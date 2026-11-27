@@ -224,7 +224,7 @@ export function ExpensesPage() {
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[800px] text-left">
             <thead>
-              <tr className="text-[10px] uppercase text-muted-foreground">
+              <tr className="text-caption uppercase text-muted-foreground">
                 {[
                   "Date",
                   "Category",
@@ -283,7 +283,7 @@ export function ExpensesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold">{expense.description}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-caption text-muted-foreground">
                     {formatDate(expense.expenseDate)} · {expenseCategoryLabel[expense.category]}
                   </p>
                 </div>
@@ -428,7 +428,7 @@ export function ExpensesPage() {
           </div>
           {errors.form && <FieldError message={errors.form} />}
           <DialogFooter>
-            <Button variant="outline" disabled={busy} onClick={() => setFormOpen(false)}>
+            <Button variant="secondary" disabled={busy} onClick={() => setFormOpen(false)}>
               Cancel
             </Button>
             <Button disabled={busy} onClick={save}>
@@ -466,11 +466,11 @@ export function ExpensesPage() {
             {reasonError && <FieldError message={reasonError} />}
           </div>
           <DialogFooter>
-            <Button variant="outline" disabled={busy} onClick={() => setVoidId(null)}>
+            <Button variant="secondary" disabled={busy} onClick={() => setVoidId(null)}>
               Cancel
             </Button>
             <Button
-              variant="outline"
+              variant="secondary"
               className="border-destructive/40 text-destructive"
               disabled={busy || !voidReason.trim()}
               onClick={voidRecord}
@@ -519,7 +519,7 @@ export function ExpensesPage() {
               {db.activities
                 .filter((event) => event.entity === "expense" && event.entityId === view.id)
                 .map((event) => (
-                  <p key={event.id} className="py-1 text-[11px] text-muted-foreground">
+                  <p key={event.id} className="py-1 text-caption text-muted-foreground">
                     {event.action.replaceAll("_", " ")} · {formatDate(event.createdAt)} ·{" "}
                     {event.subject}
                   </p>
@@ -551,7 +551,7 @@ function ExpenseField({
 function ExpenseBadge({ status }: { status: Expense["status"] }) {
   return (
     <Badge
-      variant="outline"
+      variant="secondary"
       className={
         status === "recorded"
           ? "border-success/30 bg-success/5 text-success"

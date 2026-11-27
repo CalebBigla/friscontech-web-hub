@@ -66,7 +66,7 @@ const tone: Record<PaymentStatus, string> = {
 };
 export function PaymentStatusBadge({ status, voided = false }: { status: PaymentStatus; voided?: boolean }) {
   return (
-    <Badge variant="outline" className={`whitespace-nowrap font-medium ${tone[status]}`}>
+    <Badge variant="secondary" className={`whitespace-nowrap font-medium ${tone[status]}`}>
       {voided ? "Voided" : paymentStatusLabel[status]}
     </Badge>
   );
@@ -169,7 +169,7 @@ export function PaymentPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {scope.canConfirmPayments && (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="secondary" size="sm">
               <Link to="/manager-remittances">Manager remittances</Link>
             </Button>
           )}
@@ -189,7 +189,7 @@ export function PaymentPage() {
       {/* Two separate balances, each adding up on its own line:
           customers: sold - paid by customers = customers still owe (as the Customers tab);
           reps: collected - paid in = still to pay in. */}
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">From customers · {rangeLabel}</p>
+      <p className="mb-2 text-caption font-semibold uppercase tracking-wide text-muted-foreground">From customers · {rangeLabel}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile label="Sold to customers" value={formatNaira(summary.soldToCustomers)} detail="Fulfilled orders" />
         <StatTile
@@ -205,7 +205,7 @@ export function PaymentPage() {
           detail="Sold − paid by customers"
         />
       </div>
-      <p className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Paid in by sales reps · {rangeLabel}</p>
+      <p className="mb-2 mt-4 text-caption font-semibold uppercase tracking-wide text-muted-foreground">Paid in by sales reps · {rangeLabel}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile
           tone="success"
@@ -306,7 +306,7 @@ export function PaymentPage() {
         {rows.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[10px] uppercase text-muted-foreground">
+              <thead className="border-b border-border bg-muted/40 text-caption uppercase text-muted-foreground">
                 <tr>
                   {["Date", "Customer", "Amount", "Method", "Status", "Handled by", ...(role === "sales_rep" ? [] : ["Action"])].map(
                     (h) => (
@@ -329,7 +329,7 @@ export function PaymentPage() {
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(e.date)}</td>
                     <td className="px-4 py-3">
                       <p className="font-semibold">{e.kind === "customer" ? partyName(db, e) : "Walk-in sales"}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-caption text-muted-foreground">
                         {e.kind === "customer"
                           ? `Collected by ${userName(db, e.repId)}`
                           : `${kindLabel.rep} by ${userName(db, e.repId)}`}{" "}
@@ -352,17 +352,17 @@ export function PaymentPage() {
                           return (
                             <div className="flex gap-1.5">
                               {(can.acknowledge || can.confirm) && (
-                                <Button size="sm" className="h-7 px-2 text-[11px]" onClick={() => quick(e.id, can.acknowledge ? "acknowledge" : "confirm")}>
+                                <Button size="sm" className="h-7 px-2 text-caption" onClick={() => quick(e.id, can.acknowledge ? "acknowledge" : "confirm")}>
                                   {can.acknowledge ? "Acknowledge" : "Confirm"}
                                 </Button>
                               )}
                               {can.decline && (
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-[11px] text-destructive" onClick={() => quick(e.id, "decline")}>
+                                <Button size="sm" variant="secondary" className="h-7 px-2 text-caption text-destructive" onClick={() => quick(e.id, "decline")}>
                                   Decline
                                 </Button>
                               )}
                               {can.void && (
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-[11px] text-destructive" onClick={() => quick(e.id, "void")}>
+                                <Button size="sm" variant="secondary" className="h-7 px-2 text-caption text-destructive" onClick={() => quick(e.id, "void")}>
                                   Void
                                 </Button>
                               )}
@@ -623,7 +623,7 @@ function PaymentDrawer({
                   {canDecline && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       className="border-destructive/40 text-destructive hover:bg-destructive/5"
                       onClick={() => open("decline")}
                     >
@@ -633,7 +633,7 @@ function PaymentDrawer({
                   {canVoid && (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       className="border-destructive/40 text-destructive hover:bg-destructive/5"
                       onClick={() => open("void")}
                     >
@@ -713,7 +713,7 @@ function PaymentDrawer({
             )}
             <FieldError message={errors.form} />
             <DialogFooter>
-              <Button variant="outline" disabled={busy} onClick={() => setAction(null)}>
+              <Button variant="secondary" disabled={busy} onClick={() => setAction(null)}>
                 Cancel
               </Button>
               <Button
@@ -745,7 +745,7 @@ function PaymentDrawer({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2 text-[11px] font-bold uppercase text-muted-foreground">{title}</h3>
+      <h3 className="mb-2 text-caption font-bold uppercase text-muted-foreground">{title}</h3>
       <div className="divide-y divide-border rounded-md border border-border px-3">{children}</div>
     </section>
   );
@@ -787,7 +787,7 @@ function MiniProgress({ entry }: { entry: PaymentEntry }) {
           <div key={s.key} className="flex items-center gap-1">
             {i > 0 && <span className={`h-px w-3 ${isDone ? "bg-success" : "bg-border"}`} />}
             <span
-              className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${isDone ? "bg-success/10 text-success" : isDeclinedHere ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
+              className={`rounded-full px-1.5 py-0.5 text-caption font-semibold ${isDone ? "bg-success/10 text-success" : isDeclinedHere ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
             >
               {isDeclinedHere ? "Declined" : entry.voided && s.key === "confirmed" ? "Voided" : s.label}
             </span>
@@ -827,12 +827,12 @@ function Trail({ db, entry }: { db: Db; entry: PaymentEntry }) {
                   ? entry.cashOnly ? "Confirmed by manager" : "Confirmed by owner"
                   : stepLabel[s.step]}
             </p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               {s.at
                 ? `${userName(db, s.by)} · ${formatDate(s.at)} at ${formatTime(s.at)}`
                 : "Pending"}
             </p>
-            {s.note && <p className="mt-1 text-[11px]">{s.note}</p>}
+            {s.note && <p className="mt-1 text-caption">{s.note}</p>}
           </div>
         </div>
       ))}
@@ -983,7 +983,7 @@ function SubmitPaymentDialog({
         </p>
         <FieldError message={errors.form} />
         <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" disabled={busy} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button disabled={busy || !check.balanced || cashN + transferN <= 0} onClick={submit}>

@@ -84,7 +84,7 @@ export function TeamDetailPage({ userId: memberId }: { userId: string }) {
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               className={scope.user.role === "owner" && u.status !== "inactive" ? "border-destructive/40 text-destructive" : undefined}
               onClick={() => setToggling(true)}
             >
@@ -200,7 +200,7 @@ function RepSection({
       subtitle="Achievement is calculated from recorded sales"
       action={
         p.target ? (
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="secondary" size="sm" asChild>
             <Link to="/targets/$targetId" params={{ targetId: p.target.id }}>
               View target
             </Link>

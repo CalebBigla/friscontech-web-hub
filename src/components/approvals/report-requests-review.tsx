@@ -30,7 +30,7 @@ export function ReportRequestsReview({ db }: { db: Db }) {
       )}
       {recent.length > 0 && (
         <div className="border-t border-border px-5 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recently reviewed</p>
+          <p className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">Recently reviewed</p>
           <ul className="mt-2 space-y-1.5 text-xs">
             {recent.map((r) => (
               <li key={r.id} className="flex flex-wrap justify-between gap-2">
@@ -77,7 +77,7 @@ function PendingRow({ r, who, branch }: { r: ReportRequest; who: string; branch:
         </div>
         {!declining && (
           <div className="flex shrink-0 gap-2">
-            <Button size="sm" variant="outline" onClick={() => setDeclining(true)} disabled={review.isPending}><X className="size-3.5" />Decline</Button>
+            <Button size="sm" variant="secondary" onClick={() => setDeclining(true)} disabled={review.isPending}><X className="size-3.5" />Decline</Button>
             <Button size="sm" onClick={() => void decide(true)} disabled={review.isPending}>
               {review.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}Approve
             </Button>
@@ -89,7 +89,7 @@ function PendingRow({ r, who, branch }: { r: ReportRequest; who: string; branch:
           <Input autoFocus aria-label="Reason for declining" placeholder="Reason for the Supervisor" value={reason} onChange={(e) => setReason(e.target.value)} className="h-9 flex-1" />
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setDeclining(false); setError(""); }}>Cancel</Button>
-            <Button size="sm" variant="outline" className="text-destructive" onClick={() => void decide(false)} disabled={review.isPending}>
+            <Button size="sm" variant="secondary" className="text-destructive" onClick={() => void decide(false)} disabled={review.isPending}>
               {review.isPending && <Loader2 className="size-3.5 animate-spin" />}Decline request
             </Button>
           </div>

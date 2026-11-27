@@ -158,7 +158,7 @@ export function InvoiceDialog({ open, onOpenChange, db, sales }: { open: boolean
           </div>
           <FieldError message={error} />
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={busy}>{busy ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}Generate PDF</Button>
           </DialogFooter>
         </form>

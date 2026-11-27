@@ -41,9 +41,9 @@ export function TargetsPage({ month: monthParam }: { month?: string | undefined 
 
   const monthPicker = (
     <div className="flex items-center gap-1">
-      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month"><ChevronLeft className="size-4" /></Button>
+      <Button variant="secondary" size="icon" className="h-9 w-9" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month"><ChevronLeft className="size-4" /></Button>
       <FilterSelect label="Target month" className="w-40" value={month} onChange={setMonth} options={monthOptions(current).some((o) => o.value === month) ? monthOptions(current) : [{ value: month, label: formatMonth(month) }, ...monthOptions(current)]} />
-      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Next month"><ChevronRight className="size-4" /></Button>
+      <Button variant="secondary" size="icon" className="h-9 w-9" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Next month"><ChevronRight className="size-4" /></Button>
     </div>
   );
 
@@ -70,7 +70,7 @@ export function TargetsPage({ month: monthParam }: { month?: string | undefined 
           <FilterSelect label="Status filter" className="w-full sm:w-36" value={status} onChange={setStatus} options={[{ value: ALL, label: "All statuses" }, ...(Object.keys(targetStatusLabel) as TargetStatus[]).map((s) => ({ value: s, label: targetStatusLabel[s] }))]} />
         </div>}>
         <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[900px] text-left">
-          <thead><tr className="text-[10px] uppercase text-muted-foreground"><th className="px-5 py-3">Sales rep</th><th className="px-5 py-3">Branch</th><th className="px-5 py-3 text-right">Target</th><th className="px-5 py-3 text-right">Achieved</th><th className="px-5 py-3 text-right">Remaining</th><th className="w-44 px-5 py-3">Progress</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Actions</th></tr></thead>
+          <thead><tr className="text-caption uppercase text-muted-foreground"><th className="px-5 py-3">Sales rep</th><th className="px-5 py-3">Branch</th><th className="px-5 py-3 text-right">Target</th><th className="px-5 py-3 text-right">Achieved</th><th className="px-5 py-3 text-right">Remaining</th><th className="w-44 px-5 py-3">Progress</th><th className="px-5 py-3">Status</th><th className="px-5 py-3 text-right">Actions</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.target.id} className="border-t border-border text-xs">
               <td className="px-5 py-3 font-bold"><Link to="/targets/$targetId" params={{ targetId: r.target.id }} className="hover:text-primary">{rep(r.repId)?.name}</Link></td>
@@ -83,10 +83,10 @@ export function TargetsPage({ month: monthParam }: { month?: string | undefined 
         </table></div>
         <div className="divide-y divide-border md:hidden">{rows.map((r) => (
           <div key={r.target.id} className="p-4">
-            <div className="flex items-start justify-between gap-3"><Link to="/targets/$targetId" params={{ targetId: r.target.id }} className="min-w-0"><p className="truncate text-sm font-bold">{rep(r.repId)?.name}</p><p className="text-[11px] text-muted-foreground">{branch(r.target.branchId)?.name}</p></Link><TargetStatusBadge status={r.status} /></div>
+            <div className="flex items-start justify-between gap-3"><Link to="/targets/$targetId" params={{ targetId: r.target.id }} className="min-w-0"><p className="truncate text-sm font-bold">{rep(r.repId)?.name}</p><p className="text-caption text-muted-foreground">{branch(r.target.branchId)?.name}</p></Link><TargetStatusBadge status={r.status} /></div>
             <p className="mt-3 text-xs"><strong>{formatCompactNaira(r.achieved)}</strong> <span className="text-muted-foreground">/ {formatCompactNaira(r.amount)} · {formatCompactNaira(r.remaining)} left</span></p>
             <div className="mt-2"><TargetProgressBar p={r} /></div>
-            <div className="mt-3 flex gap-2"><Button variant="outline" size="sm" asChild><Link to="/targets/$targetId" params={{ targetId: r.target.id }}>View</Link></Button><Button variant="outline" size="sm" onClick={() => setEditing(r.target)}>Edit</Button></div>
+            <div className="mt-3 flex gap-2"><Button variant="secondary" size="sm" asChild><Link to="/targets/$targetId" params={{ targetId: r.target.id }}>View</Link></Button><Button variant="secondary" size="sm" onClick={() => setEditing(r.target)}>Edit</Button></div>
           </div>))}</div>
         {isLoading ? <p className="p-5 text-sm text-muted-foreground">Loading persisted targets…</p> : !rows.length && <EmptyState title={all.length ? "No targets match your filters." : "No targets have been set for this month."} {...(all.length ? {} : { detail: "Use Set Target to add one." })} />}
       </Panel>

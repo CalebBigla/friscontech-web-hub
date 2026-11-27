@@ -24,7 +24,7 @@ export function PublicFrame({ children, title, subtitle }: { children: ReactNode
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
           <span className="text-lg font-extrabold text-primary">{BRAND_NAME}</span>
-          <span className="text-[11px] text-muted-foreground">Staff onboarding</span>
+          <span className="text-caption text-muted-foreground">Staff onboarding</span>
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-4 py-6">
@@ -294,10 +294,10 @@ export function OnboardingFormPage({ token }: { token: string }) {
         {step === 1 && <>
           <p className="text-xs font-semibold">Job details (set by the Owner)</p>
           <div className="grid grid-cols-2 gap-3 rounded-md bg-muted/40 p-3 text-sm">
-            <div><p className="text-[11px] text-muted-foreground">Job title</p><p className="font-medium">{o.jobTitle}</p></div>
-            <div><p className="text-[11px] text-muted-foreground">Employee ID</p><p className="font-medium">{o.employeeId}</p></div>
-            <div><p className="text-[11px] text-muted-foreground">Department</p><p className="font-medium">{o.department}</p></div>
-            <div><p className="text-[11px] text-muted-foreground">Start date</p><p className="font-medium">{formatDate(o.startDate)}</p></div>
+            <div><p className="text-caption text-muted-foreground">Job title</p><p className="font-medium">{o.jobTitle}</p></div>
+            <div><p className="text-caption text-muted-foreground">Employee ID</p><p className="font-medium">{o.employeeId}</p></div>
+            <div><p className="text-caption text-muted-foreground">Department</p><p className="font-medium">{o.department}</p></div>
+            <div><p className="text-caption text-muted-foreground">Start date</p><p className="font-medium">{formatDate(o.startDate)}</p></div>
           </div>
           <p className="pt-2 text-xs font-semibold">Previous job reference</p>
           <div className="grid gap-3 sm:grid-cols-2">{F({ k: "refName", label: "Referee name" })}{F({ k: "refJobTitle", label: "Referee job title" })}{F({ k: "refCompany", label: "Company name" })}{F({ k: "refEmail", label: "Referee email", type: "email" })}</div>
@@ -327,7 +327,7 @@ export function OnboardingFormPage({ token }: { token: string }) {
               {o.guarantorStatus === "completed" && o.guarantorResponse?.filledBy === "staff" && " (filled in by you on your guarantor's behalf)"}
             </p>
             {o.guarantorStatus !== "completed" && <>
-              <p className="text-[11px] text-muted-foreground">Required before you can submit. Choose how it is completed:</p>
+              <p className="text-caption text-muted-foreground">Required before you can submit. Choose how it is completed:</p>
               <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="How the guarantor form is completed">
                 {([["link", "Send a link to my guarantor"], ["behalf", "Fill it in on their behalf"]] as const).map(([mode, label]) => (
                   <button key={mode} type="button" role="radio" aria-checked={guarantorMode === mode} onClick={() => { setGuarantorMode(mode); setGError(""); }}
@@ -336,12 +336,12 @@ export function OnboardingFormPage({ token }: { token: string }) {
               </div>
               {guarantorMode === "link" ? (
                 o.guarantorToken ? <>
-                  <div className="flex gap-2"><Input readOnly value={guarantorUrl(o.guarantorToken)} className="h-9 font-mono text-xs" /><Button type="button" size="sm" variant="outline" onClick={() => copyText(guarantorUrl(o.guarantorToken!), "Guarantor link copied")}><Copy className="size-4" />Copy</Button></div>
-                  <p className="text-[11px] text-muted-foreground">Send this link to your guarantor. You can continue your form meanwhile and submit once they have responded.</p>
-                </> : <Button type="button" size="sm" variant="outline" onClick={sendGuarantor}>Create guarantor link</Button>
+                  <div className="flex gap-2"><Input readOnly value={guarantorUrl(o.guarantorToken)} className="h-9 font-mono text-xs" /><Button type="button" size="sm" variant="secondary" onClick={() => copyText(guarantorUrl(o.guarantorToken!), "Guarantor link copied")}><Copy className="size-4" />Copy</Button></div>
+                  <p className="text-caption text-muted-foreground">Send this link to your guarantor. You can continue your form meanwhile and submit once they have responded.</p>
+                </> : <Button type="button" size="sm" variant="secondary" onClick={sendGuarantor}>Create guarantor link</Button>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-[11px] text-muted-foreground">Answer as your guarantor would. The Owner will see that you filled this in on their behalf.</p>
+                  <p className="text-caption text-muted-foreground">Answer as your guarantor would. The Owner will see that you filled this in on their behalf.</p>
                   <div><Label htmlFor="gYears" className="text-xs">How long has the guarantor known you? *</Label><Input id="gYears" value={gAnswers.yearsKnown} placeholder="e.g. 6 years" onChange={(e) => setGAnswers({ ...gAnswers, yearsKnown: e.target.value })} className="mt-1.5 h-10" /></div>
                   <div><Label htmlFor="gRel" className="text-xs">Nature of relationship *</Label><Textarea id="gRel" rows={2} value={gAnswers.relationship} onChange={(e) => setGAnswers({ ...gAnswers, relationship: e.target.value })} className="mt-1.5" /></div>
                   <div><Label htmlFor="gChar" className="text-xs">Description of your character *</Label><Textarea id="gChar" rows={2} value={gAnswers.character} onChange={(e) => setGAnswers({ ...gAnswers, character: e.target.value })} className="mt-1.5" /></div>
@@ -360,16 +360,16 @@ export function OnboardingFormPage({ token }: { token: string }) {
         {step === 4 && <>
           <div>
             <p className="text-xs font-semibold">Passport photograph *</p>
-            <p className="text-[11px] text-muted-foreground">Clear background showing your full face. Image only, up to 4 MB.</p>
+            <p className="text-caption text-muted-foreground">Clear background showing your full face. Image only, up to 4 MB.</p>
             <div className="mt-2 flex items-center gap-4">
-              {o.photo ? <img src={o.photo.dataUrl} alt="Your passport photograph" className="size-28 rounded-md border border-border object-cover" /> : <div className="grid size-28 place-items-center rounded-md border border-dashed border-border text-[11px] text-muted-foreground">No photo</div>}
+              {o.photo ? <img src={o.photo.dataUrl} alt="Your passport photograph" className="size-28 rounded-md border border-border object-cover" /> : <div className="grid size-28 place-items-center rounded-md border border-dashed border-border text-caption text-muted-foreground">No photo</div>}
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-semibold"><Upload className="size-4" />{o.photo ? "Replace" : "Upload"}<input type="file" accept="image/*" className="sr-only" onChange={(e) => onPhoto(e.target.files?.[0])} /></label>
             </div>
             <FieldError message={errors.photo} />
           </div>
           <div>
             <p className="text-xs font-semibold">Photocopies of credentials</p>
-            <p className="text-[11px] text-muted-foreground">Images or PDF, up to 5 MB each. You can add several.</p>
+            <p className="text-caption text-muted-foreground">Images or PDF, up to 5 MB each. You can add several.</p>
             <ul className="mt-2 space-y-1">{o.credentials.map((f, i) => (
               <li key={i} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-xs"><span className="flex items-center gap-2 truncate"><FileText className="size-4 shrink-0" />{f.name}</span>
                 <button type="button" aria-label={`Remove ${f.name}`} onClick={() => removeCredential(i)} disabled={saving}><X className="size-4" /></button></li>
@@ -396,7 +396,7 @@ export function OnboardingFormPage({ token }: { token: string }) {
         </>}
       </div>
       <div className="mt-4 flex justify-between gap-2">
-        <Button variant="outline" disabled={step === 0} onClick={() => { setReturnTo(null); setStep(step - 1); }}>Back</Button>
+        <Button variant="secondary" disabled={step === 0} onClick={() => { setReturnTo(null); setStep(step - 1); }}>Back</Button>
         {step < 5 ? <Button onClick={next} disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />}{returnTo !== null ? "Save & return to submit" : "Save & continue"}</Button>
           : <Button onClick={submit} disabled={saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}Submit form</Button>}
       </div>

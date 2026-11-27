@@ -71,15 +71,57 @@
   --color-chart-target: var(--chart-target);
   --color-avatar: var(--avatar);
   --color-danger-soft: var(--danger-soft);
-  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-info: var(--violet);
+  --color-info-soft: var(--violet-soft);
+
+  /* Typography: Inter, then the system UI font. */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-light-copy: var(--font-sans);
-  --shadow-panel: 0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent), 0 1px 1px color-mix(in oklab, var(--foreground) 2%, transparent);
-  --shadow-raised: 0 4px 12px color-mix(in oklab, var(--foreground) 6%, transparent), 0 1px 3px color-mix(in oklab, var(--foreground) 4%, transparent);
+
+  /*
+   * Type scale. Use these instead of pixel sizes:
+   *   text-page     page title            22/30
+   *   text-section  card / section title  15/22
+   *   text-body     body copy             14/22  (same as text-sm)
+   *   text-label    form labels, nav      13/20
+   *   text-table    table cells           13/20
+   *   text-caption  helper text, meta     12/16  (same as text-xs)
+   *   text-metric   key figures           26/32
+   */
+  --text-page: 1.375rem;
+  --text-page--line-height: 1.875rem;
+  --text-page--font-weight: 600;
+  --text-page--letter-spacing: -0.018em;
+  --text-section: 0.9375rem;
+  --text-section--line-height: 1.375rem;
+  --text-section--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.25rem;
+  --text-table: 0.8125rem;
+  --text-table--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-metric: 1.625rem;
+  --text-metric--line-height: 2rem;
+  --text-metric--font-weight: 600;
+  --text-metric--letter-spacing: -0.02em;
+
+  /* Spacing: Tailwind's 4px scale (p-1 = 4px … p-8 = 32px). Layout steps: */
+  --spacing-page: 1.5rem;    /* page padding, gap between page sections */
+  --spacing-card: 1.25rem;   /* padding inside cards */
+  --spacing-gutter: 1rem;    /* gap between cards in a grid */
+
+  /* Elevation */
+  --shadow-panel: 0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent);
+  --shadow-raised: 0 4px 12px color-mix(in oklab, var(--foreground) 7%, transparent), 0 1px 3px color-mix(in oklab, var(--foreground) 4%, transparent);
+  --shadow-overlay: 0 16px 40px color-mix(in oklab, var(--foreground) 14%, transparent), 0 2px 6px color-mix(in oklab, var(--foreground) 6%, transparent);
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.982 0.003 255);
+  --radius: 0.5rem;
+  --background: oklch(0.984 0.002 255);
   --foreground: oklch(0.21 0.025 262);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.21 0.025 262);
@@ -90,14 +132,14 @@
   --secondary: oklch(0.955 0.012 260);
   --secondary-foreground: oklch(0.25 0.04 262);
   --muted: oklch(0.967 0.004 255);
-  --muted-foreground: oklch(0.52 0.025 258);
+  --muted-foreground: oklch(0.5 0.02 258);
   --accent: oklch(0.955 0.02 260);
   --accent-foreground: oklch(0.3 0.08 260);
   --destructive: oklch(0.577 0.215 27.3);
   --destructive-foreground: oklch(0.985 0.003 248);
-  --border: oklch(0.922 0.006 255);
-  --input: oklch(0.9 0.008 255);
-  --ring: oklch(0.6 0.13 260);
+  --border: oklch(0.925 0.004 255);
+  --input: oklch(0.895 0.006 255);
+  --ring: oklch(0.55 0.15 260);
   --avatar: oklch(0.94 0.03 260);
   --danger-soft: oklch(0.965 0.025 25);
   --chart-1: oklch(0.646 0.222 41.116);
@@ -113,9 +155,9 @@
   --sidebar-accent-foreground: oklch(0.38 0.14 260);
   --sidebar-border: oklch(0.922 0.006 255);
   --sidebar-ring: oklch(0.6 0.13 260);
-  --success: oklch(0.55 0.14 155);
+  --success: oklch(0.52 0.13 155);
   --success-soft: oklch(0.962 0.035 155);
-  --warning: oklch(0.6 0.15 55);
+  --warning: oklch(0.56 0.14 55);
   --warning-soft: oklch(0.968 0.035 75);
   --brand-soft: oklch(0.955 0.025 260);
   --violet: oklch(0.52 0.19 295);
@@ -189,7 +231,8 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    letter-spacing: -0.003em;
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.006em;
   }
 
   h1, h2, h3, h4, h5, h6, strong, th {
@@ -211,19 +254,22 @@
    * header row no longer applies.
    */
   table thead th {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    font-size: var(--text-caption);
+    line-height: var(--text-caption--line-height);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-transform: none;
     color: var(--color-muted-foreground);
-    background-color: color-mix(in oklab, var(--color-muted) 70%, transparent);
+    background-color: var(--color-muted);
     white-space: nowrap;
   }
   table thead th button { text-transform: inherit; }
   table tbody tr { transition: background-color 120ms ease; }
-  table tbody tr:hover { background-color: color-mix(in oklab, var(--color-muted) 65%, transparent); }
+  table tbody tr:hover { background-color: color-mix(in oklab, var(--color-muted) 60%, transparent); }
 
-  :focus-visible { outline-color: var(--color-ring); }
+  /* One visible keyboard focus style everywhere. */
+  :focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible, [role="combobox"]:focus-visible { outline: none; }
 
   .dark .shadow-panel { box-shadow: 0 1px 0 oklch(1 0 0 / 3%) inset, 0 1px 2px oklch(0 0 0 / 30%); }
   .dark .shadow-raised, .dark .hover\:shadow-raised:hover { box-shadow: 0 1px 0 oklch(1 0 0 / 4%) inset, 0 8px 24px oklch(0 0 0 / 40%); }

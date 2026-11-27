@@ -24,7 +24,7 @@ export function TargetDetailPage({ targetId }: { targetId: string }) {
   const [editing, setEditing] = useState(false);
   const target = getTarget(db, targetId);
   if (isLoading) return <AppShell title="Target"><p className="py-12 text-center text-sm text-muted-foreground">Loading persisted target…</p></AppShell>;
-  if (error || !target || !canSeeBranch(scope, target.branchId)) return <AppShell title="Target"><RestrictedNotice message={error instanceof Error ? error.message : target ? "This target belongs to a branch outside your access." : "This target does not exist."} /><div className="mt-4 text-center"><Button variant="outline" asChild><Link to="/targets"><ArrowLeft className="size-4" />Back to targets</Link></Button></div></AppShell>;
+  if (error || !target || !canSeeBranch(scope, target.branchId)) return <AppShell title="Target"><RestrictedNotice message={error instanceof Error ? error.message : target ? "This target belongs to a branch outside your access." : "This target does not exist."} /><div className="mt-4 text-center"><Button variant="secondary" asChild><Link to="/targets"><ArrowLeft className="size-4" />Back to targets</Link></Button></div></AppShell>;
 
   const p = getTargetProgress(db, target);
   const isBranch = target.scope === "branch";
@@ -89,9 +89,9 @@ export function TargetDetailPage({ targetId }: { targetId: string }) {
       <Panel className="mt-5 overflow-hidden" title="Sales breakdown" subtitle={`${sales.length} completed sales count toward this target`}>
         {sales.length ? <>
           <div className="hidden overflow-x-auto sm:block"><table className="w-full min-w-[560px] text-left">
-            <thead><tr className="text-[10px] uppercase text-muted-foreground"><th className="px-5 py-3">Date</th><th className="px-5 py-3">Sale</th><th className="px-5 py-3">Product</th>{isBranch && <th className="px-5 py-3">Sales rep</th>}<th className="px-5 py-3 text-right">Quantity</th><th className="px-5 py-3 text-right">Revenue</th></tr></thead>
+            <thead><tr className="text-caption uppercase text-muted-foreground"><th className="px-5 py-3">Date</th><th className="px-5 py-3">Sale</th><th className="px-5 py-3">Product</th>{isBranch && <th className="px-5 py-3">Sales rep</th>}<th className="px-5 py-3 text-right">Quantity</th><th className="px-5 py-3 text-right">Revenue</th></tr></thead>
             <tbody>{sales.map((s) => (
-              <tr key={s.id} className="border-t border-border text-xs"><td className="px-5 py-3">{formatDate(s.saleDate)}</td><td className="px-5 py-3 font-mono text-[11px] text-muted-foreground">{s.code}</td><td className="px-5 py-3 font-semibold">{product(s.productId)?.name}</td>{isBranch && <td className="px-5 py-3">{seller(s.salesRepId)}</td>}<td className="px-5 py-3 text-right">{s.quantity}</td><td className="px-5 py-3 text-right font-bold">{formatNaira(saleTotal(s))}</td></tr>))}</tbody>
+              <tr key={s.id} className="border-t border-border text-xs"><td className="px-5 py-3">{formatDate(s.saleDate)}</td><td className="px-5 py-3 font-mono text-caption text-muted-foreground">{s.code}</td><td className="px-5 py-3 font-semibold">{product(s.productId)?.name}</td>{isBranch && <td className="px-5 py-3">{seller(s.salesRepId)}</td>}<td className="px-5 py-3 text-right">{s.quantity}</td><td className="px-5 py-3 text-right font-bold">{formatNaira(saleTotal(s))}</td></tr>))}</tbody>
           </table></div>
           <div className="divide-y divide-border sm:hidden">{sales.map((s) => (
             <div key={s.id} className="flex items-center justify-between gap-3 p-4 text-xs"><div className="min-w-0"><p className="truncate font-bold">{product(s.productId)?.name}</p><p className="text-muted-foreground">{formatDate(s.saleDate)} · {s.quantity} units{isBranch ? ` · ${seller(s.salesRepId)}` : ""}</p></div><p className="font-bold">{formatNaira(saleTotal(s))}</p></div>))}</div>

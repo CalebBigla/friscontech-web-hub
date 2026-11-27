@@ -156,27 +156,27 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
             </Button>
           )}
           {canAct && (
-            <Button size="sm" variant="outline" onClick={() => setDialog("payment")}>
+            <Button size="sm" variant="secondary" onClick={() => setDialog("payment")}>
               Record payment
             </Button>
           )}
           {scope.canManageCustomers && (
-            <Button size="sm" variant="outline" onClick={() => setDialog("edit")}>
+            <Button size="sm" variant="secondary" onClick={() => setDialog("edit")}>
               Edit
             </Button>
           )}
           {scope.canManageCustomers && (
-            <Button size="sm" variant="outline" onClick={toggleStatus}>
+            <Button size="sm" variant="secondary" onClick={toggleStatus}>
               {customer.status === "active" ? "Deactivate" : "Activate"}
             </Button>
           )}
           {canReassign && (
-            <Button size="sm" variant="outline" onClick={() => setDialog("reassign")}>
+            <Button size="sm" variant="secondary" onClick={() => setDialog("reassign")}>
               Reassign
             </Button>
           )}
           {scope.canSetCreditLimit && (
-            <Button size="sm" variant="outline" onClick={() => setDialog("limit")}>
+            <Button size="sm" variant="secondary" onClick={() => setDialog("limit")}>
               Credit limit
             </Button>
           )}
@@ -283,7 +283,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
               <Table head={["Order", "Date", "Items", "Rep", "Total", "Paid", "Status"]}>
                 {orders.map((o) => (
                   <tr key={o.orderId}>
-                    <td className="px-4 py-3 font-mono text-[11px] font-bold">{codeOf(o.orderId)}</td>
+                    <td className="px-4 py-3 font-mono text-caption font-bold">{codeOf(o.orderId)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(o.date)}</td>
                     <td className="px-4 py-3">
                       {o.lines.map((l) => `${product(l.productId)} × ${l.quantity}${l.isPromo ? " (promo)" : ""}`).join(", ")}
@@ -313,7 +313,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                 {payments.map((p) => (
                   <tr key={p.id}>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(p.paymentDate)}</td>
-                    <td className="px-4 py-3 font-mono text-[11px]">
+                    <td className="px-4 py-3 font-mono text-caption">
                       {p.id}
                       {p.reference ? ` · ${p.reference}` : ""}
                     </td>
@@ -381,7 +381,7 @@ function Table({ head, children }: { head: string[]; children: React.ReactNode }
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[620px] text-left text-xs">
-        <thead className="border-b border-border bg-muted/40 text-[10px] uppercase text-muted-foreground">
+        <thead className="border-b border-border bg-muted/40 text-caption uppercase text-muted-foreground">
           <tr>
             {head.map((h) => (
               <th key={h} className="px-4 py-3 font-semibold">

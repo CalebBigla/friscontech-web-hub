@@ -43,10 +43,10 @@ export function StorekeeperDashboard() {
       <Panel className="mt-4 overflow-hidden border-primary/40" title="Orders to fulfil" subtitle="Oldest first. The stock is already held for each order."
         action={<Button variant="ghost" size="sm" asChild><Link to="/orders" search={{ status: "pending" }}>Open orders<ArrowRight className="size-3" /></Link></Button>}>
         {pending.length ? <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left">
-          <thead><tr className="text-[10px] uppercase text-muted-foreground"><th className="px-5 py-3">Order</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Sales rep</th><th className="px-5 py-3">Items</th><th className="px-5 py-3">Raised</th><th className="px-5 py-3 text-right">Action</th></tr></thead>
+          <thead><tr className="text-caption uppercase text-muted-foreground"><th className="px-5 py-3">Order</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Sales rep</th><th className="px-5 py-3">Items</th><th className="px-5 py-3">Raised</th><th className="px-5 py-3 text-right">Action</th></tr></thead>
           <tbody>{pending.slice(0, 8).map((o) => (
             <tr key={o.id} className="border-t border-border text-xs">
-              <td className="px-5 py-3 font-mono text-[11px] font-bold">{o.code}</td><td className="px-5 py-3 font-semibold">{o.customerName}</td><td className="px-5 py-3">{name(o.repId)}</td>
+              <td className="px-5 py-3 font-mono text-caption font-bold">{o.code}</td><td className="px-5 py-3 font-semibold">{o.customerName}</td><td className="px-5 py-3">{name(o.repId)}</td>
               <td className="px-5 py-3">{o.lines.map((l) => `${product(l.productId)} × ${formatNumber(l.quantity)}`).join(", ")}</td>
               <td className="px-5 py-3 text-muted-foreground">{formatDayTime(o.createdAt, today)}</td>
               <td className="px-5 py-2 text-right"><Button size="sm" asChild><Link to="/orders" search={{ status: "pending" }}>Fulfil</Link></Button></td>
@@ -55,8 +55,8 @@ export function StorekeeperDashboard() {
       </Panel>
 
       <Panel className="mt-4 overflow-hidden" title="Low stock" subtitle="Products at or below threshold"
-        action={<Button variant="outline" size="sm" asChild><Link to="/inventory">View Inventory</Link></Button>}>
-        {attention.length ? <table className="w-full text-left"><thead><tr className="text-[10px] uppercase text-muted-foreground"><th className="px-5 py-3">Product</th><th className="px-5 py-3 text-right">Available</th><th className="px-5 py-3 text-right">Threshold</th><th className="px-5 py-3 text-right">Status</th></tr></thead>
+        action={<Button variant="secondary" size="sm" asChild><Link to="/inventory">View Inventory</Link></Button>}>
+        {attention.length ? <table className="w-full text-left"><thead><tr className="text-caption uppercase text-muted-foreground"><th className="px-5 py-3">Product</th><th className="px-5 py-3 text-right">Available</th><th className="px-5 py-3 text-right">Threshold</th><th className="px-5 py-3 text-right">Status</th></tr></thead>
           <tbody>{attention.map((r) => <tr key={r.record.id} className="border-t border-border text-xs"><td className="px-5 py-3 font-semibold"><Link to="/inventory/$inventoryId" params={{ inventoryId: r.record.id }} className="hover:text-primary">{r.product.name}</Link></td><td className="px-5 py-3 text-right font-bold">{formatNumber(r.available)}</td><td className="px-5 py-3 text-right text-muted-foreground">{r.record.lowStockThreshold}</td><td className="px-5 py-3 text-right"><StockStatusBadge status={r.status} /></td></tr>)}</tbody></table>
           : <EmptyState title="All products are above their thresholds." />}
       </Panel>

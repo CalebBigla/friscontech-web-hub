@@ -66,11 +66,11 @@ export function TeamPage() {
   const Member = ({ u }: { u: User }) => (
     <Link to="/team/$userId" params={{ userId: u.id }} className="flex min-w-0 items-center gap-3 hover:text-primary">
       <UserAvatar name={u.name} src={photos[u.id]} />
-      <span className="min-w-0"><span className="block truncate text-sm font-semibold">{u.name}</span><span className="block truncate text-[11px] text-muted-foreground">{u.email}</span></span>
+      <span className="min-w-0"><span className="block truncate text-sm font-semibold">{u.name}</span><span className="block truncate text-caption text-muted-foreground">{u.email}</span></span>
     </Link>
   );
   // A pending member has no role until the owner approves their onboarding.
-  const Role = ({ u }: { u: User }) => u.status === "pending" ? <span className="text-[11px] text-muted-foreground">Assigned on approval</span> : <RoleBadge role={u.role} />;
+  const Role = ({ u }: { u: User }) => u.status === "pending" ? <span className="text-caption text-muted-foreground">Assigned on approval</span> : <RoleBadge role={u.role} />;
   const last = (u: User) => { const at = getLastActivity(db, u.id); return at ? formatDayTime(at, db.tenant.referenceDate) : "No activity yet"; };
 
   return (
@@ -93,12 +93,12 @@ export function TeamPage() {
                 <UserAvatar name={`${o.data?.firstName ?? ""} ${o.data?.lastName ?? ""}`} src={o.userId ? photos[o.userId] : undefined} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{o.data?.firstName} {o.data?.lastName}</p>
-                  <p className="text-[11px] text-muted-foreground">{o.employeeId} · {o.jobTitle} · Submitted {o.submittedAt ? formatDate(o.submittedAt.slice(0, 10)) : "—"}</p>
+                  <p className="text-caption text-muted-foreground">{o.employeeId} · {o.jobTitle} · Submitted {o.submittedAt ? formatDate(o.submittedAt.slice(0, 10)) : "—"}</p>
                 </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <OnboardingStatusBadge status={o.status} />
-                  <Button size="sm" variant="outline" onClick={() => setReviewing(o.id)}><Eye className="size-4" />Review</Button>
+                  <Button size="sm" variant="secondary" onClick={() => setReviewing(o.id)}><Eye className="size-4" />Review</Button>
                 </div>
               </div>
             ))}
@@ -114,7 +114,7 @@ export function TeamPage() {
           <FilterSelect label="Status filter" className="w-full sm:w-36" value={status} onChange={setStatus} options={[{ value: ALL, label: "All statuses" }, ...(Object.keys(userStatusLabel) as UserStatus[]).map((s) => ({ value: s, label: userStatusLabel[s] }))]} />
         </div>}>
         <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[880px] text-left">
-          <thead><tr className="text-[10px] uppercase text-muted-foreground"><th className="px-5 py-3"><Sort k="name" label="Member" /></th><th className="px-5 py-3"><Sort k="role" label="Role" /></th><th className="px-5 py-3">Branch</th><th className="px-5 py-3">Status</th><th className="px-5 py-3"><Sort k="joined" label="Joined" /></th><th className="px-5 py-3"><Sort k="activity" label="Last activity" /></th><th className="px-5 py-3 text-right">Actions</th></tr></thead>
+          <thead><tr className="text-caption uppercase text-muted-foreground"><th className="px-5 py-3"><Sort k="name" label="Member" /></th><th className="px-5 py-3"><Sort k="role" label="Role" /></th><th className="px-5 py-3">Branch</th><th className="px-5 py-3">Status</th><th className="px-5 py-3"><Sort k="joined" label="Joined" /></th><th className="px-5 py-3"><Sort k="activity" label="Last activity" /></th><th className="px-5 py-3 text-right">Actions</th></tr></thead>
           <tbody>{rows.map((u) => (
             <tr key={u.id} className="border-t border-border text-xs">
               <td className="px-5 py-3"><Member u={u} /></td><td className="px-5 py-3"><Role u={u} /></td>
@@ -129,7 +129,7 @@ export function TeamPage() {
           <div key={u.id} className="p-4">
             <div className="flex items-start justify-between gap-3"><Member u={u} /><Actions u={u} /></div>
             <div className="mt-3 flex flex-wrap items-center gap-2"><Role u={u} /><MemberStatusBadge status={u.status} /></div>
-            <p className="mt-2 text-[11px] text-muted-foreground">{branchName(u.branchId)} · Joined {formatDate(u.createdAt.slice(0, 10))} · {last(u)}</p>
+            <p className="mt-2 text-caption text-muted-foreground">{branchName(u.branchId)} · Joined {formatDate(u.createdAt.slice(0, 10))} · {last(u)}</p>
           </div>))}</div>
         {!rows.length && <EmptyState title="No team members found." detail={all.length ? "Try a different search or filter." : "Use Add Team Member to invite someone."} />}
       </Panel>

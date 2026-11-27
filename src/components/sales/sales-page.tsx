@@ -366,7 +366,7 @@ export function SalesPage() {
               </div>
             ))}
           </div>
-          <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+          <div className="mt-2 flex justify-between text-caption text-muted-foreground">
             <span>{formatShortDate(range.from)}</span>
             <span>{formatShortDate(range.to)}</span>
           </div>
@@ -381,7 +381,7 @@ export function SalesPage() {
           <>
             <div className="hidden lg:block">{filterControls}</div>
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               className="lg:hidden"
               onClick={() => setShowFilters((s) => !s)}
@@ -412,7 +412,7 @@ export function SalesPage() {
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-left">
             <thead>
-              <tr className="text-[10px] uppercase text-muted-foreground">
+              <tr className="text-caption uppercase text-muted-foreground">
                 {canInvoice && <th className="w-10 px-4 py-3"><span className="sr-only">Pick for invoice</span></th>}
                 {[
                   "Sale ID",
@@ -452,7 +452,7 @@ export function SalesPage() {
                       />
                     </td>
                   )}
-                  <td className="px-4 py-3 font-mono text-[11px] font-bold">#{s.code}</td>
+                  <td className="px-4 py-3 font-mono text-caption font-bold">#{s.code}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(s.saleDate)}</td>
                   <td className="px-4 py-3 font-semibold">{name(s.salesRepId)}</td>
                   <td className="px-4 py-3">{branchName(s.branchId)}</td>
@@ -464,7 +464,7 @@ export function SalesPage() {
                   <td className="px-4 py-3 font-bold">
                     {formatNaira(saleTotal(s))}
                     {s.discountAmount > 0 && (
-                      <span className="block text-[10px] font-normal text-muted-foreground">
+                      <span className="block text-caption font-normal text-muted-foreground">
                         {formatNaira(s.discountAmount)} off
                       </span>
                     )}
@@ -505,10 +505,10 @@ export function SalesPage() {
                 <p className="text-xs font-bold">
                   {product(s.productId)?.name} × {s.quantity}
                 </p>
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                <p className="mt-0.5 truncate text-caption text-muted-foreground">
                   #{s.code} · {name(s.salesRepId)} · {branchName(s.branchId)}
                 </p>
-                <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <p className="flex items-center gap-2 text-caption text-muted-foreground">
                   {formatDate(s.saleDate)} <SaleTypeBadge db={db} sale={s} />
                 </p>
               </div>
@@ -579,7 +579,7 @@ export function SalesPage() {
             </dl>
           )}
           {selected && selected.status === "completed" && (scope.user.role === "owner" || scope.user.role === "sales_rep") && (
-            <Button variant="outline" className="w-full" onClick={() => setInvoiceFor([selected])}>
+            <Button variant="secondary" className="w-full" onClick={() => setInvoiceFor([selected])}>
               <FileText className="size-4" />Generate invoice
             </Button>
           )}
@@ -589,7 +589,7 @@ export function SalesPage() {
           {selected &&
             scope.user.role !== "owner" &&
             db.users.find((u) => u.id === selected.salesRepId)?.role === "owner" && (
-              <p className="rounded-md bg-muted p-3 text-[11px] text-muted-foreground">
+              <p className="rounded-md bg-muted p-3 text-caption text-muted-foreground">
                 Recorded by the Business Owner for this branch. View only.
               </p>
             )}

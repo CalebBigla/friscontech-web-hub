@@ -178,7 +178,7 @@ export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomer
                         </Button>
                       </div>
                       {left !== null && (
-                        <p className={`mt-2 text-[11px] font-medium ${left <= 0 || over ? "text-destructive" : left <= (product(l.productId)?.lowStockThreshold ?? 0) ? "text-warning" : "text-success"}`}>
+                        <p className={`mt-2 text-caption font-medium ${left <= 0 || over ? "text-destructive" : left <= (product(l.productId)?.lowStockThreshold ?? 0) ? "text-warning" : "text-success"}`}>
                           {left <= 0 ? "Out of stock: it can't be ordered now" : over ? `Only ${formatNumber(left)} available` : `${formatNumber(left)} available at ${branch?.name ?? "the branch"}`}
                         </p>
                       )}
@@ -186,7 +186,7 @@ export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomer
                     </div>
                   );
                 })}
-                <Button type="button" variant="outline" size="sm" onClick={() => { setLines((rows) => [...rows, { key: nextKey, productId: "", quantity: "1" }]); setNextKey((k) => k + 1); }}>
+                <Button type="button" variant="secondary" size="sm" onClick={() => { setLines((rows) => [...rows, { key: nextKey, productId: "", quantity: "1" }]); setNextKey((k) => k + 1); }}>
                   <Plus className="size-3.5" />Add product
                 </Button>
               </div>
@@ -203,9 +203,9 @@ export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomer
           <FieldError message={errors.form} />
           <DialogFooter className="gap-2">
             {reviewing ? (
-              <Button type="button" variant="outline" onClick={() => setReviewing(false)}><ArrowLeft className="size-4" />Back</Button>
+              <Button type="button" variant="secondary" onClick={() => setReviewing(false)}><ArrowLeft className="size-4" />Back</Button>
             ) : (
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
             )}
             <Button type="submit" disabled={place.isPending}>
               {place.isPending ? <Loader2 className="size-4 animate-spin" /> : reviewing ? <Send className="size-4" /> : null}

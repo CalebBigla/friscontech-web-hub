@@ -82,7 +82,7 @@ export function ProductFormDialog({ open, onOpenChange, product, categories = []
           </div>
           <div className="grid gap-3 sm:grid-cols-3">{!isPromo && field("unitPrice", "Selling price (₦) *", "unitPrice", { type: "number", min: 0, inputMode: "decimal" })}{canSeeCost && field("unitCost", "Unit cost (₦) *", "unitCost", { type: "number", min: 0, inputMode: "decimal" })}{field("threshold", "Low-stock threshold *", "threshold", { type: "number", min: 0, step: 1, inputMode: "numeric" })}</div>
           <div><Label htmlFor="p-description" className="text-xs">Description</Label><Textarea id="p-description" value={form.description} onChange={(e) => set("description", e.target.value)} className="mt-1.5" rows={3} placeholder="Optional" /></div>
-          <DialogFooter className="gap-2"><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />}{product ? "Save changes" : "Add product"}</Button></DialogFooter>
+          <DialogFooter className="gap-2"><Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />}{product ? "Save changes" : "Add product"}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

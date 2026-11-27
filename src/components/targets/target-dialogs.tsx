@@ -80,11 +80,11 @@ export function SetTargetDialog({ open, onOpenChange, scope, defaultMonth, onEdi
             {kind === "rep" && <div><Label className="text-xs">Branch</Label><Input readOnly value={branch?.name ?? "Derived from rep"} className="mt-1.5 h-9 bg-muted" aria-label="Branch (derived from rep)" /></div>}
           </div>
           {existing ? (
-            <div className="alert-warning rounded-lg p-4 text-xs"><p className="font-semibold">{who} already has a {formatMonth(form.month)} target of {formatNaira(existing.amount)}.</p><Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => { onOpenChange(false); onEditExisting(existing); }}>Edit target</Button></div>
+            <div className="alert-warning rounded-lg p-4 text-xs"><p className="font-semibold">{who} already has a {formatMonth(form.month)} target of {formatNaira(existing.amount)}.</p><Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => { onOpenChange(false); onEditExisting(existing); }}>Edit target</Button></div>
           ) : (
             <div><Label htmlFor="t-amount" className="text-xs">Target amount (₦) *</Label><Input id="t-amount" type="number" min={1} inputMode="numeric" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} className="mt-1.5 h-9" placeholder="e.g. 3000000" /><FieldError message={errors.amount} /></div>
           )}
-          <DialogFooter className="gap-2"><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" disabled={saving || !!existing}>{saving && <Loader2 className="size-4 animate-spin" />}Set target</Button></DialogFooter>
+          <DialogFooter className="gap-2"><Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit" disabled={saving || !!existing}>{saving && <Loader2 className="size-4 animate-spin" />}Set target</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
@@ -134,12 +134,12 @@ export function EditTargetDialog({ target, onClose, actorId, db }: { target: Tar
         {confirming ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-xs"><div className="rounded-md bg-muted p-4"><p className="text-muted-foreground">Current target</p><p className="mt-1 text-lg font-bold">{formatNaira(target?.amount ?? 0)}</p></div><div className="rounded-md bg-muted p-4"><p className="text-muted-foreground">New target</p><p className="mt-1 text-lg font-bold text-primary">{formatNaira(Math.round(next))}</p></div></div>
-            <DialogFooter className="gap-2"><Button variant="outline" onClick={() => setConfirming(false)}>Back</Button><Button onClick={save} disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />}Confirm change</Button></DialogFooter>
+            <DialogFooter className="gap-2"><Button variant="secondary" onClick={() => setConfirming(false)}>Back</Button><Button onClick={save} disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />}Confirm change</Button></DialogFooter>
           </div>
         ) : (
           <form onSubmit={review} className="space-y-4" noValidate>
             <div><Label htmlFor="edit-amount" className="text-xs">Target amount (₦) *</Label><Input id="edit-amount" type="number" min={1} inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1.5 h-9" /><FieldError message={error} /></div>
-            <DialogFooter className="gap-2"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit">Review change</Button></DialogFooter>
+            <DialogFooter className="gap-2"><Button type="button" variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit">Review change</Button></DialogFooter>
           </form>
         )}
       </DialogContent>

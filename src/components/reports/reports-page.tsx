@@ -227,7 +227,7 @@ function ReportsPageContent() {
           : "Analyze sales, targets, inventory and team performance."
       }
       actions={
-        <Button size="sm" variant="outline" onClick={exportCsv}>
+        <Button size="sm" variant="secondary" onClick={exportCsv}>
           <Download className="size-4" />
           <span className="hidden sm:inline">Export</span>
         </Button>
@@ -393,7 +393,7 @@ function ReportsPageContent() {
                   ))}
                 </Table>
                 {sales.rows.length > 200 && (
-                  <p className="border-t border-border px-5 py-3 text-[11px] text-muted-foreground">
+                  <p className="border-t border-border px-5 py-3 text-caption text-muted-foreground">
                     Showing the latest 200 of {formatNumber(sales.rows.length)} sales. Export
                     includes all rows.
                   </p>
@@ -653,7 +653,7 @@ function ReportsPageContent() {
                           {r.user.name}
                         </Link>
                         {r.user.status === "inactive" && (
-                          <span className="ml-2 text-[10px] text-muted-foreground">Inactive</span>
+                          <span className="ml-2 text-caption text-muted-foreground">Inactive</span>
                         )}
                       </td>
                       <td className={td}>{bname(r.user.branchId ?? "")}</td>
@@ -711,7 +711,7 @@ function ReportsPageContent() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] text-left">
           <thead>
-            <tr className="text-[10px] uppercase text-muted-foreground">
+            <tr className="text-caption uppercase text-muted-foreground">
               {head.map((h) => {
                 const [l, a] = h.split("|");
                 return (
@@ -732,7 +732,7 @@ function ReportsPageContent() {
 function Ctl({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className="mb-1.5 text-caption font-medium text-muted-foreground">{label}</p>
       {children}
     </div>
   );

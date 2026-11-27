@@ -97,7 +97,7 @@ export function OnboardingReview({ onboardingId, scope, onDecided, onDeleted }: 
       <div className="flex flex-col gap-4 sm:flex-row">
         {o.photo?.dataUrl
           ? <img src={o.photo.dataUrl} alt="Passport photograph" className="size-24 shrink-0 rounded-md border border-border object-cover" />
-          : <div className="grid size-24 shrink-0 place-items-center rounded-md border border-dashed border-border text-[11px] text-muted-foreground">No photo</div>}
+          : <div className="grid size-24 shrink-0 place-items-center rounded-md border border-dashed border-border text-caption text-muted-foreground">No photo</div>}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-base font-semibold">{fullName(d) || "Unnamed applicant"}</p>
@@ -119,7 +119,7 @@ export function OnboardingReview({ onboardingId, scope, onDecided, onDeleted }: 
       <div className="rounded-md border border-border p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold">Guarantor · {[d.guarantorFirstName, d.guarantorSurname].filter(Boolean).join(" ") || "—"}{d.guarantorPhone ? ` · ${d.guarantorPhone}` : ""}</p>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             {guarantorStatusLabel[o.guarantorStatus]}
             {g && (g.filledBy === "staff" ? " · filled in by the applicant on the guarantor's behalf" : " · filled in by the guarantor")}
           </span>
@@ -136,7 +136,7 @@ export function OnboardingReview({ onboardingId, scope, onDecided, onDeleted }: 
               <Button size="sm" disabled={!!busy} onClick={() => run("gacc", () => onboardingService.reviewGuarantor(o.id, "accepted", "", scope.user.id), "Guarantor accepted")}>
                 {busy === "gacc" ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}Accept guarantor
               </Button>
-              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setDeclining(true)}><Ban className="size-4" />Decline guarantor</Button>
+              <Button size="sm" variant="secondary" disabled={!!busy} onClick={() => setDeclining(true)}><Ban className="size-4" />Decline guarantor</Button>
             </div>
           )
         )}
@@ -144,7 +144,7 @@ export function OnboardingReview({ onboardingId, scope, onDecided, onDeleted }: 
 
       {/* ---- Documents ---- */}
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Documents</p>
+        <p className="mb-2 text-caption font-semibold uppercase tracking-wide text-muted-foreground">Documents</p>
         <ul className="space-y-1">
           {o.photo && <li><a href={o.photo.dataUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"><FileText className="size-4" />Passport photograph</a></li>}
           {o.credentials.map((f) => (
@@ -156,18 +156,18 @@ export function OnboardingReview({ onboardingId, scope, onDecided, onDeleted }: 
 
       {/* ---- Actions ---- */}
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-        <Button size="sm" variant="outline" onClick={() => setPdfOpen(true)}><Eye className="size-4" />View full form</Button>
-        <Button size="sm" variant="outline" disabled={!!busy} onClick={download}>{busy === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}Download PDF</Button>
+        <Button size="sm" variant="secondary" onClick={() => setPdfOpen(true)}><Eye className="size-4" />View full form</Button>
+        <Button size="sm" variant="secondary" disabled={!!busy} onClick={download}>{busy === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}Download PDF</Button>
         {o.status === "submitted" && <>
           <Button size="sm" disabled={!!busy || o.guarantorDecision !== "accepted" || !o.userId}
             title={!o.userId ? "The staff member has not created their account yet" : o.guarantorDecision !== "accepted" ? "Accept the guarantor response first" : undefined}
             onClick={() => setApproveOpen(true)}><CheckCircle2 className="size-4" />Approve</Button>
-          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setCorrectionsOpen(true)}><Undo2 className="size-4" />Request corrections</Button>
-          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setRejectOpen(true)}><Ban className="size-4" />Reject</Button>
+          <Button size="sm" variant="secondary" disabled={!!busy} onClick={() => setCorrectionsOpen(true)}><Undo2 className="size-4" />Request corrections</Button>
+          <Button size="sm" variant="secondary" disabled={!!busy} onClick={() => setRejectOpen(true)}><Ban className="size-4" />Reject</Button>
         </>}
       </div>
       {o.status === "submitted" && (!o.userId || o.guarantorDecision !== "accepted") && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           {!o.userId ? "This submission has no login account, so there is nothing to approve. Request corrections so they submit again, or reject it. " : ""}
           {o.guarantorDecision !== "accepted" ? "Accept the guarantor response before approving." : ""}
         </p>
@@ -227,7 +227,7 @@ function OnboardingPdfDialog({ o, open, onOpenChange }: { o: Onboarding; open: b
           : url ? <iframe src={url} title="Employee data form" className="h-[70vh] w-full rounded-md border border-border" />
           : <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="size-4 animate-spin" />Preparing the PDF…</p>}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Close</Button>
           {url && <Button asChild><a href={url} download={onboardingPdfName(o)}><Download className="size-4" />Download PDF</a></Button>}
         </DialogFooter>
       </DialogContent>
@@ -269,20 +269,20 @@ function CorrectionsDialog({ open, onOpenChange, o, onDone }: {
           <div className="space-y-3">
             <div className="flex gap-2">
               <Input readOnly value={link} className="h-9 font-mono text-xs" />
-              <Button size="sm" variant="outline" onClick={() => copyText(link)}><Copy className="size-4" />Copy</Button>
+              <Button size="sm" variant="secondary" onClick={() => copyText(link)}><Copy className="size-4" />Copy</Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" asChild>
+              <Button size="sm" variant="secondary" asChild>
                 <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-4" />Send on WhatsApp</a>
               </Button>
               {email && (
-                <Button size="sm" variant="outline" asChild>
+                <Button size="sm" variant="secondary" asChild>
                   <a href={`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("Please update your onboarding form")}&body=${encodeURIComponent(message)}`}><Mail className="size-4" />Send by email</a>
                 </Button>
               )}
-              <Button size="sm" variant="outline" onClick={() => copyText(message, "Message copied")}><Copy className="size-4" />Copy message</Button>
+              <Button size="sm" variant="secondary" onClick={() => copyText(message, "Message copied")}><Copy className="size-4" />Copy message</Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">If they try to sign in meanwhile, they see your note and are told to use the link.</p>
+            <p className="text-caption text-muted-foreground">If they try to sign in meanwhile, they see your note and are told to use the link.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -295,12 +295,12 @@ function CorrectionsDialog({ open, onOpenChange, o, onDone }: {
               <Checkbox checked={redo} disabled={declined} onCheckedChange={(c) => setRedo(!!c)} className="mt-0.5" />
               <span>The guarantor form must be completed again{declined ? " (required: you declined the guarantor)" : ""}</span>
             </label>
-            {err && <p className="text-[11px] font-medium text-destructive">{err}</p>}
+            {err && <p className="text-caption font-medium text-destructive">{err}</p>}
           </div>
         )}
         <DialogFooter>
           {link ? <Button onClick={() => onOpenChange(false)}>Done</Button> : <>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button disabled={busy} onClick={async () => {
               if (note.trim().length < 5) { setErr("Describe what the staff member needs to correct."); return; }
               setBusy(true);
@@ -331,10 +331,10 @@ function ReasonDialog({ open, onOpenChange, title, description, confirm, onSubmi
       <DialogContent>
         <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription className="text-xs">{description}</DialogDescription></DialogHeader>
         <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" rows={4} />
-        {err && <p className="text-[11px] font-medium text-destructive">{err}</p>}
+        {err && <p className="text-caption font-medium text-destructive">{err}</p>}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="outline" disabled={busy} onClick={async () => {
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="secondary" disabled={busy} onClick={async () => {
             setBusy(true);
             const r = await onSubmit(reason);
             setBusy(false);
@@ -387,10 +387,10 @@ function ApproveDialog({ open, onOpenChange, o, scope, onDone }: {
                 options={[{ value: "none", label: "Select a branch" }, ...activeBranches.map((b: Branch) => ({ value: b.id, label: b.name }))]} />
             </div>
           </div>
-          {err && <p className="text-[11px] font-medium text-destructive">{err}</p>}
+          {err && <p className="text-caption font-medium text-destructive">{err}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button disabled={busy} onClick={async () => {
             if (!branchId) { setErr("Select an active branch before approving this staff member."); return; }
             setBusy(true);

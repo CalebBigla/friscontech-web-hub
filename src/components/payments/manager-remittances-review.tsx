@@ -220,7 +220,7 @@ function OwnerManagerPaymentPage({
                   ["Status", reviewRow.status],
                 ].map(([label, value]) => (
                   <div key={label} className="min-w-0">
-                    <dt className="text-[10px] text-muted-foreground">{label}</dt>
+                    <dt className="text-caption text-muted-foreground">{label}</dt>
                     <dd className="mt-1 truncate font-semibold">{value}</dd>
                   </div>
                 ))}
@@ -262,13 +262,13 @@ function OwnerManagerPaymentPage({
             </>
           )}
           <DialogFooter>
-            <Button variant="outline" disabled={busy} onClick={() => setReviewId(null)}>
+            <Button variant="secondary" disabled={busy} onClick={() => setReviewId(null)}>
               Close
             </Button>
             {reviewRow?.status === "submitted" && (
               <>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   className="border-destructive/40 text-destructive"
                   disabled={busy || !declineReason.trim()}
                   onClick={() => reviewRemittance("decline")}
@@ -307,7 +307,7 @@ function OwnerManagerPaymentTable({
       <div className="hidden max-w-full min-w-0 overflow-x-auto md:block">
         <table className="w-full min-w-[1050px] text-left">
           <thead>
-            <tr className="text-[10px] uppercase text-muted-foreground">
+            <tr className="text-caption uppercase text-muted-foreground">
               {[
                 "Manager",
                 "Branch",
@@ -344,7 +344,7 @@ function OwnerManagerPaymentTable({
                     {formatTime(row.submittedAt ?? row.createdAt)}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="outline" className={`capitalize ${statusStyle[row.status]}`}>
+                    <Badge variant="secondary" className={`capitalize ${statusStyle[row.status]}`}>
                       {row.status}
                     </Badge>
                   </td>
@@ -354,7 +354,7 @@ function OwnerManagerPaymentTable({
                   <td className="px-4 py-2">
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       className="h-8"
                       onClick={() => onReview(row)}
                     >
@@ -380,7 +380,7 @@ function OwnerManagerPaymentTable({
                     {branch?.name ?? "Branch"} · {formatDate(row.submittedAt ?? row.createdAt)}
                   </p>
                 </div>
-                <Badge variant="outline" className={`capitalize ${statusStyle[row.status]}`}>
+                <Badge variant="secondary" className={`capitalize ${statusStyle[row.status]}`}>
                   {row.status}
                 </Badge>
               </div>
@@ -405,7 +405,7 @@ function OwnerManagerPaymentTable({
                   <dd className="font-semibold">{row.transferReference ?? "—"}</dd>
                 </div>
               </dl>
-              <Button variant="outline" className="min-h-10 w-full" onClick={() => onReview(row)}>
+              <Button variant="secondary" className="min-h-10 w-full" onClick={() => onReview(row)}>
                 Review
               </Button>
             </article>

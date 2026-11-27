@@ -229,7 +229,7 @@ export function OwnerRemittancePage({ remittanceId }: { remittanceId?: string })
         <div className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain">
           <table className="hidden w-full min-w-[1000px] text-left md:table">
             <thead>
-              <tr className="text-[10px] uppercase text-muted-foreground">
+              <tr className="text-caption uppercase text-muted-foreground">
                 {[
                   "Payee",
                   "Type",
@@ -259,14 +259,14 @@ export function OwnerRemittancePage({ remittanceId }: { remittanceId?: string })
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{row.payeeName}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1 text-caption text-muted-foreground">
                       {payeeLabels[row.payeeType]} · {formatDate(row.remittanceDate)}
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-bold">{formatNaira(row.amount)}</span>
                 </div>
                 <p className="line-clamp-2 text-xs text-muted-foreground">{row.purpose}</p>
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <div className="flex items-center justify-between text-caption text-muted-foreground">
                   <span className="capitalize">
                     {row.paymentMethod}
                     {row.reference ? ` · ${row.reference}` : ""}
@@ -405,7 +405,7 @@ export function OwnerRemittancePage({ remittanceId }: { remittanceId?: string })
           {errors.form && <FieldError message={errors.form} />}
           <DialogFooter className="flex-col-reverse sm:flex-row">
             <Button
-              variant="outline"
+              variant="secondary"
               className="min-h-11 w-full sm:w-auto"
               disabled={busy}
               onClick={() => setFormOpen(false)}
@@ -458,7 +458,7 @@ function Filter({
 }) {
   return (
     <div className="min-w-0">
-      <Label className="mb-1 block text-[10px] text-muted-foreground">{label}</Label>
+      <Label className="mb-1 block text-caption text-muted-foreground">{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-9 text-xs">
           <SelectValue />
@@ -510,7 +510,7 @@ function RemittanceDetail({ db, row }: { db: Db; row: OwnerRemittance }) {
       subtitle="Outgoing transaction details"
       actions={
         <Link to="/owner/remittance">
-          <Button variant="outline">
+          <Button variant="secondary">
             <ArrowLeft className="size-4" />
             Back to Remittance
           </Button>
@@ -521,7 +521,7 @@ function RemittanceDetail({ db, row }: { db: Db; row: OwnerRemittance }) {
         <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
           {values.map(([label, value]) => (
             <div key={label} className="min-w-0 rounded-md border border-border p-3">
-              <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+              <p className="text-caption uppercase text-muted-foreground">{label}</p>
               <p className="mt-1 break-words text-sm font-semibold">{value}</p>
             </div>
           ))}

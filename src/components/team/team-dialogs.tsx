@@ -210,7 +210,7 @@ export function TeamMemberDialog({
                   <Input id="t-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1.5 h-9" />
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">The member fills in their employee data via the onboarding link and sets their own password. Their account is only activated after your review.</p>
+              <p className="text-caption text-muted-foreground">The member fills in their employee data via the onboarding link and sets their own password. Their account is only activated after your review.</p>
             </>
           )}
 
@@ -227,7 +227,7 @@ export function TeamMemberDialog({
 
           <FieldError message={errors.form} />
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="size-4 animate-spin" />}
               {member ? "Save changes" : scope.user.role === "owner" ? "Create invite" : "Send for approval"}
@@ -313,11 +313,11 @@ export function MemberStatusDialog({ member, onClose, actorId }: { member: User 
                 ))}
               </ul>
             )}
-            <p className="text-[11px] text-muted-foreground">The new rep takes over each customer's details and ledger. Past sales and targets stay with {member?.name}.</p>
+            <p className="text-caption text-muted-foreground">The new rep takes over each customer's details and ledger. Past sales and targets stay with {member?.name}.</p>
           </div>
         )}
         {isRep && scope.user.role !== "owner" && (
-          <p className="text-[11px] text-muted-foreground">Their customers will wait for the owner to reassign them.</p>
+          <p className="text-caption text-muted-foreground">Their customers will wait for the owner to reassign them.</p>
         )}
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

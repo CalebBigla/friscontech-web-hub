@@ -136,7 +136,7 @@ export function ApprovalsPage() {
       <div className="flex gap-2">
         <Button
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={busy === a.id}
           onClick={() => {
             setRejecting(a);
@@ -283,7 +283,7 @@ export function ApprovalsPage() {
                     )}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-[11px] font-semibold">{a.id}</span>
+                        <span className="font-mono text-caption font-semibold">{a.id}</span>
                         <span className="status status-brand">{approvalTypeLabel[a.type]}</span>
                         {a.emergency && <span className="status status-danger">Emergency</span>}
                         <span className={`status ${statusTone[a.status]}`}>
@@ -293,26 +293,26 @@ export function ApprovalsPage() {
                         </span>
                       </div>
                       <p className="mt-1.5 text-sm font-bold">{d.title}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-caption text-muted-foreground">
                         {d.detail}
                         {d.detail ? " · " : ""}
                         {db.branches.find((b) => b.id === a.branchId)?.name ?? "No branch"} · by{" "}
                         {name(a.requestedBy)} · {formatDayTime(a.requestedAt, today)}
                       </p>
                       {a.emergencyReason && (
-                        <p className="mt-1 text-[11px]">
+                        <p className="mt-1 text-caption">
                           <span className="text-destructive">Emergency reason: </span>
                           {a.emergencyReason}
                         </p>
                       )}
                       {a.note && (
-                        <p className="mt-1 text-[11px]">
+                        <p className="mt-1 text-caption">
                           <span className="text-muted-foreground">Note: </span>
                           {a.note}
                         </p>
                       )}
                       {a.reviewedBy && (
-                        <p className="mt-1 text-[11px] text-muted-foreground">
+                        <p className="mt-1 text-caption text-muted-foreground">
                           {a.status === "approved" ? "Approved" : "Rejected"} by{" "}
                           {name(a.reviewedBy)} · {formatDayTime(a.reviewedAt!, today)}
                           {a.rejectionReason ? ` — ${a.rejectionReason}` : ""}
@@ -353,7 +353,7 @@ export function ApprovalsPage() {
             <FieldError message={reasonErr} />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setRejecting(null)}>
+            <Button variant="secondary" onClick={() => setRejecting(null)}>
               Cancel
             </Button>
             <Button
@@ -377,7 +377,7 @@ export function ApprovalsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="secondary"
               disabled={busy === "bulk"}
               onClick={() => setBulkConfirm(false)}
             >

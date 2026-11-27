@@ -86,7 +86,7 @@ export function AddStockDialog({ open, onOpenChange, scope, defaults }: { open: 
           {!direct && <div className={`rounded-md border p-3 ${form.emergency ? "border-destructive/40 bg-destructive/5" : "border-border"}`}>
             <label className="flex items-start gap-2.5 text-xs">
               <input type="checkbox" className="mt-0.5 size-4 accent-destructive" checked={form.emergency} onChange={(e) => setForm((f) => ({ ...f, emergency: e.target.checked }))} />
-              <span><span className="font-semibold">Emergency override</span><span className="block text-[11px] text-muted-foreground">Adds the stock immediately. Your manager must review it afterwards and it's labelled Emergency in the audit log.</span></span>
+              <span><span className="font-semibold">Emergency override</span><span className="block text-caption text-muted-foreground">Adds the stock immediately. Your manager must review it afterwards and it's labelled Emergency in the audit log.</span></span>
             </label>
             {form.emergency && <div className="mt-3"><Label htmlFor="stock-emergency" className="text-xs">Emergency reason *</Label><Textarea id="stock-emergency" value={form.emergencyReason} onChange={(e) => setForm((f) => ({ ...f, emergencyReason: e.target.value }))} className="mt-1.5 text-sm" rows={2} placeholder="Customer waiting for a confirmed order" /><FieldError message={errors.emergencyReason as string | undefined} /></div>}
           </div>}
@@ -95,11 +95,11 @@ export function AddStockDialog({ open, onOpenChange, scope, defaults }: { open: 
               <div><p className="text-muted-foreground">On hand now</p><p className="mt-1 font-bold">{inv.quantityOnHand}</p></div>
               <div><p className="text-muted-foreground">{direct || form.emergency ? "After receipt" : "After approval"}</p><p className="mt-1 font-bold">{after ? after.quantityOnHand : "—"}</p></div>
               <div><p className="text-muted-foreground">Status</p><div className="mt-1"><StockStatusBadge status={getInventoryStatus(after ?? inv)} /></div></div>
-              <p className="col-span-3 text-[11px] text-muted-foreground">Available now: {formatUnits(getAvailable(inv))}</p>
+              <p className="col-span-3 text-caption text-muted-foreground">Available now: {formatUnits(getAvailable(inv))}</p>
             </div>
           )}
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={saving}>{saving && <Loader2 className="size-4 animate-spin" />}{direct ? "Add stock" : form.emergency ? "Add now (emergency)" : "Submit for approval"}</Button>
           </DialogFooter>
         </form>
