@@ -26,9 +26,11 @@ import {
   getManagerRemittances,
   getManagerTotalReceived,
   getRemittanceOutstanding,
+  remittanceInRange,
   validateRemittanceReconciliation,
 } from "@/lib/remittance-calculations";
 import { getAccessScope, useCurrentUserId } from "@/lib/session";
+import { PeriodFilter, usePeriodFilter } from "@/components/period-filter";
 import { useLiveWorkspace } from "@/hooks/use-live-workspace";
 import { useConfirmManagerRemittance, useDeclineManagerRemittance, useSubmitManagerRemittance } from "@/hooks/use-remittances";
 import {
@@ -72,6 +74,9 @@ export function RemittancePage() {
   const periodNow = currentPeriod(db.tenant.referenceDate);
   const [period, setPeriod] = useState(periodNow);
   const [branchFilter, setBranchFilter] = useState("all");
+  // Owner view: Day, week, month or chosen dates, by submission date.
+  const { state: ownerPeriod, setState: setOwnerPeriod, range: ownerRange, label: ownerRangeLabel } =
+    usePeriodFilter(db.tenant.referenceDate);
   const [statusFilter, setStatusFilter] = useState(managerMode ? "all" : "submitted");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"submit" | "confirm" | "decline" | null>(null);
@@ -101,6 +106,7 @@ export function RemittancePage() {
   );
   const rows = (managerMode ? periodRows : allRows).filter(
     (row) =>
+      (managerMode || remittanceInRange(row, ownerRange)) &&
       (branchFilter === "all" || row.branchId === branchFilter) &&
       (statusFilter === "all" || row.status === statusFilter),
   );
@@ -458,9 +464,11 @@ export function RemittancePage() {
       </div>
       <Panel
         title="Manager remittance submissions"
-        subtitle="Owner review queue and preserved remittance history"
+        subtitle={`Submitted ${ownerRangeLabel} · ${rows.filter((row) => statusFilter === "all" || row.status === statusFilter).length} shown`}
         className="mt-5 min-w-0 overflow-hidden"
         action={
+          <div className="flex flex-wrap gap-2">
+          <PeriodFilter today={db.tenant.referenceDate} value={ownerPeriod} onChange={setOwnerPeriod} />
           <FilterSelect
             label="Branch"
             value={branchFilter}
@@ -471,6 +479,7 @@ export function RemittancePage() {
             ]}
             className="w-40"
           />
+          </div>
         }
       >
         <RemittanceTable

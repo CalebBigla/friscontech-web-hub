@@ -276,10 +276,14 @@ export type PaymentEntry = {
   /** the last person who acted on the payment */
   handledBy: string;
   declineReason?: string | undefined;
+  /** Confirmed, then voided by the owner (stored as declined). */
+  voided: boolean;
+  /** No transfer part: the branch manager confirms it, not the owner. */
+  cashOnly: boolean;
   trail: PaymentTrailStep[];
 };
 export const paymentStatusLabel: Record<PaymentStatus, string> = {
-  submitted: "Awaiting acknowledgement",
+  submitted: "Awaiting manager",
   acknowledged: "Awaiting owner confirmation",
   confirmed: "Confirmed",
   declined: "Declined",
@@ -346,6 +350,8 @@ export function toPaymentEntry(payment: Payment): PaymentEntry {
     status: payment.status,
     handledBy: trail[trail.length - 1]!.by ?? payment.salesRepId,
     declineReason: payment.declineReason,
+    voided: payment.status === "declined" && !!payment.confirmedAt,
+    cashOnly: payment.transferAmount <= 0,
     trail,
   };
 }
@@ -370,8 +376,26 @@ export function toCustomerPaymentEntry(payment: CustomerPayment): PaymentEntry {
     status: payment.status,
     handledBy: trail[trail.length - 1]!.by ?? payment.receivedBy,
     declineReason: payment.declineReason,
+    voided: payment.status === "declined" && !!payment.confirmedAt,
+    cashOnly: payment.method === "cash",
     trail,
   };
+}
+
+/**
+ * What the caller may do with a payment. Cash: the branch manager confirms or
+ * declines it. Transfer: the manager acknowledges (or declines while submitted),
+ * the owner confirms or declines. The owner can void any confirmed payment.
+ */
+export function getPaymentActions(scope: AccessScope, entry: PaymentEntry) {
+  const pending = entry.status === "submitted" || entry.status === "acknowledged";
+  const isManager = scope.canAcknowledgePayments && entry.managerId === scope.user.id;
+  const isOwner = scope.canConfirmPayments;
+  const acknowledge = isManager && !entry.cashOnly && entry.status === "submitted";
+  const confirm = pending && (entry.cashOnly ? isManager : isOwner);
+  const decline = pending && (entry.cashOnly ? isManager : isOwner || acknowledge);
+  const voidable = isOwner && entry.status === "confirmed";
+  return { acknowledge, confirm, decline, void: voidable };
 }
 
 export type PaymentEntryFilters = PaymentFilters & {

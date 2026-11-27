@@ -202,7 +202,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
           tone={summary.balance < 0 ? "danger" : "success"}
           label="Balance"
           value={formatNaira(summary.balance)}
-          detail={summary.balance < 0 ? "Customer owes" : "Nothing owed"}
+          detail={summary.balance < 0 ? "Customer in debt" : "No debt"}
         />
         <StatTile
           label="Total ordered"

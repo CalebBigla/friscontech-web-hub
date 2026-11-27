@@ -31,6 +31,7 @@ import { orderIdOf } from "@/lib/customer-calculations";
 import { formatDate, formatNaira, formatTime } from "@/lib/format";
 import { CustomerFilter, MethodFilter, PeriodFilter, usePeriodFilter } from "@/components/period-filter";
 import {
+  getPaymentActions,
   getPaymentEntriesForScope,
   getPaymentOverviewSummary,
   getRepPaymentSummary,
@@ -45,14 +46,15 @@ import {
 import { getAccessScope, useCurrentUserId, type AccessScope } from "@/lib/session";
 import { useLiveWorkspace } from "@/hooks/use-live-workspace";
 import { useIdempotencyKey } from "@/hooks/use-idempotency-key";
-import { useAcknowledgePayment, useConfirmPayment, useDeclinePayment, useSubmitPayment } from "@/hooks/use-payments";
-import { useAcknowledgeCustomerPayment, useConfirmCustomerPayment, useDeclineCustomerPayment } from "@/hooks/use-customer-payments";
+import { useAcknowledgePayment, useConfirmPayment, useDeclinePayment, useSubmitPayment, useVoidPayment } from "@/hooks/use-payments";
+import { useAcknowledgeCustomerPayment, useConfirmCustomerPayment, useDeclineCustomerPayment, useVoidCustomerPayment } from "@/hooks/use-customer-payments";
 import {
   runWrite,
   validateAcknowledgePayment,
   validateConfirmPayment,
   validateDeclinePayment,
   validatePaymentSubmission,
+  validateVoidPayment,
   type FieldErrors,
 } from "@/lib/validation";
 
@@ -62,10 +64,10 @@ const tone: Record<PaymentStatus, string> = {
   declined: "border-destructive/30 bg-destructive/5 text-destructive",
   confirmed: "border-success/30 bg-success/5 text-success",
 };
-export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+export function PaymentStatusBadge({ status, voided = false }: { status: PaymentStatus; voided?: boolean }) {
   return (
     <Badge variant="outline" className={`whitespace-nowrap font-medium ${tone[status]}`}>
-      {paymentStatusLabel[status]}
+      {voided ? "Voided" : paymentStatusLabel[status]}
     </Badge>
   );
 }
@@ -155,8 +157,8 @@ export function PaymentPage() {
     role === "sales_rep"
       ? "Submit your sales payments and track customer payments you collected."
       : role === "manager"
-        ? "Acknowledge payments from your branch. The owner gives final confirmation."
-        : "Confirm payments directly or after manager acknowledgement. Only confirmed money counts as received.";
+        ? "Confirm cash payments from your branch. Acknowledge transfers; the owner confirms them."
+        : "Confirm transfers (cash is confirmed by branch managers). Void a confirmed payment if it was wrong. Only confirmed money counts as received.";
 
   return (
     <AppShell title={title} subtitle={subtitle}>
@@ -209,7 +211,7 @@ export function PaymentPage() {
           tone="success"
           label="Paid in · confirmed"
           value={formatNaira(summary.confirmed)}
-          detail={`${summary.confirmedCount} pay-in${summary.confirmedCount === 1 ? "" : "s"} confirmed by the Owner`}
+          detail={`${summary.confirmedCount} pay-in${summary.confirmedCount === 1 ? "" : "s"} confirmed (cash by manager, transfer by Owner)`}
         />
         <StatTile
           tone="warning"
@@ -306,7 +308,7 @@ export function PaymentPage() {
             <table className="w-full min-w-[680px] text-left text-xs">
               <thead className="border-b border-border bg-muted/40 text-[10px] uppercase text-muted-foreground">
                 <tr>
-                  {["Date", "Rep / customer", "Amount", "Method", "Status", "Handled by", ...(role === "sales_rep" ? [] : ["Action"])].map(
+                  {["Date", "Customer", "Amount", "Method", "Status", "Handled by", ...(role === "sales_rep" ? [] : ["Action"])].map(
                     (h) => (
                       <th key={h} className="px-4 py-3 font-semibold">
                         {h}
@@ -326,35 +328,44 @@ export function PaymentPage() {
                   >
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(e.date)}</td>
                     <td className="px-4 py-3">
-                      <p className="font-semibold">{partyName(db, e)}</p>
+                      <p className="font-semibold">{e.kind === "customer" ? partyName(db, e) : "Walk-in sales"}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {e.kind === "customer"
                           ? `Collected by ${userName(db, e.repId)}`
-                          : kindLabel.rep}{" "}
+                          : `${kindLabel.rep} by ${userName(db, e.repId)}`}{" "}
                         · {e.id}
                       </p>
                     </td>
                     <td className="px-4 py-3 font-bold tabular-nums">{formatNaira(e.amount)}</td>
                     <td className="px-4 py-3">{paymentMethodLabel[e.method]}</td>
                     <td className="px-4 py-3">
-                      <PaymentStatusBadge status={e.status} />
+                      <PaymentStatusBadge status={e.status} voided={e.voided} />
                       {role === "sales_rep" && <MiniProgress entry={e} />}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{userName(db, e.handledBy)}</td>
                     {role !== "sales_rep" && (
                       <td className="px-4 py-3" onClick={(ev) => ev.stopPropagation()}>
                         {(() => {
-                          const ack = scope.canAcknowledgePayments && e.status === "submitted" && e.managerId === scope.user.id;
-                          const conf = scope.canConfirmPayments && (e.status === "acknowledged" || e.status === "submitted");
-                          if (!ack && !conf) return <span className="text-muted-foreground">—</span>;
+                          const can = getPaymentActions(scope, e);
+                          if (!can.acknowledge && !can.confirm && !can.decline && !can.void)
+                            return <span className="text-muted-foreground">—</span>;
                           return (
                             <div className="flex gap-1.5">
-                              <Button size="sm" className="h-7 px-2 text-[11px]" onClick={() => quick(e.id, ack ? "acknowledge" : "confirm")}>
-                                {ack ? "Acknowledge" : "Confirm"}
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-[11px] text-destructive" onClick={() => quick(e.id, "decline")}>
-                                Decline
-                              </Button>
+                              {(can.acknowledge || can.confirm) && (
+                                <Button size="sm" className="h-7 px-2 text-[11px]" onClick={() => quick(e.id, can.acknowledge ? "acknowledge" : "confirm")}>
+                                  {can.acknowledge ? "Acknowledge" : "Confirm"}
+                                </Button>
+                              )}
+                              {can.decline && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[11px] text-destructive" onClick={() => quick(e.id, "decline")}>
+                                  Decline
+                                </Button>
+                              )}
+                              {can.void && (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-[11px] text-destructive" onClick={() => quick(e.id, "void")}>
+                                  Void
+                                </Button>
+                              )}
                             </div>
                           );
                         })()}
@@ -405,7 +416,7 @@ const partyName = (db: Db, e: PaymentEntry) =>
     ? (db.customers.find((c) => c.id === e.customerId)?.name ?? "Customer")
     : userName(db, e.repId);
 
-type QuickAction = "acknowledge" | "confirm" | "decline" | null;
+type QuickAction = "acknowledge" | "confirm" | "decline" | "void" | null;
 function PaymentDrawer({
   db,
   scope,
@@ -419,7 +430,7 @@ function PaymentDrawer({
   initialAction?: QuickAction;
   onClose: () => void;
 }) {
-  const [action, setAction] = useState<"acknowledge" | "confirm" | "decline" | null>(null);
+  const [action, setAction] = useState<QuickAction>(null);
   const [reference, setReference] = useState("");
   const [proofName, setProofName] = useState("");
   const [reason, setReason] = useState("");
@@ -431,14 +442,14 @@ function PaymentDrawer({
   const acknowledgeCustomer = useAcknowledgeCustomerPayment();
   const confirmCustomer = useConfirmCustomerPayment();
   const declineCustomer = useDeclineCustomerPayment();
+  const voidRep = useVoidPayment();
+  const voidCustomer = useVoidCustomerPayment();
 
-  const canAck =
-    !!entry &&
-    scope.canAcknowledgePayments &&
-    entry.status === "submitted" &&
-    entry.managerId === scope.user.id;
-  const canConfirm = !!entry && scope.canConfirmPayments && (entry.status === "acknowledged" || entry.status === "submitted");
-  const canDecline = canAck || canConfirm;
+  const can = entry ? getPaymentActions(scope, entry) : null;
+  const canAck = !!can?.acknowledge;
+  const canConfirm = !!can?.confirm;
+  const canDecline = !!can?.decline;
+  const canVoid = !!can?.void;
 
   const open = (kind: typeof action) => {
     setAction(kind);
@@ -469,10 +480,15 @@ function PaymentDrawer({
         : action === "confirm"
           ? await runWrite<Payment | CustomerPayment>(validateConfirmPayment(db, scope, payment), () =>
               customer ? confirmCustomer.mutateAsync({ p_payment_id: entry.id }) : confirmRep.mutateAsync({ p_payment_id: entry.id }))
-          : await runWrite<Payment | CustomerPayment>(validateDeclinePayment(db, scope, payment, reason), () =>
-              customer
-                ? declineCustomer.mutateAsync({ p_payment_id: entry.id, p_reason: reason.trim() })
-                : declineRep.mutateAsync({ p_payment_id: entry.id, p_reason: reason.trim() }));
+          : action === "void"
+            ? await runWrite<Payment | CustomerPayment>(validateVoidPayment(db, scope, payment, reason), () =>
+                customer
+                  ? voidCustomer.mutateAsync({ p_payment_id: entry.id, p_reason: reason.trim() })
+                  : voidRep.mutateAsync({ p_payment_id: entry.id, p_reason: reason.trim() }))
+            : await runWrite<Payment | CustomerPayment>(validateDeclinePayment(db, scope, payment, reason), () =>
+                customer
+                  ? declineCustomer.mutateAsync({ p_payment_id: entry.id, p_reason: reason.trim() })
+                  : declineRep.mutateAsync({ p_payment_id: entry.id, p_reason: reason.trim() }));
     setBusy(false);
     if (!result.ok) {
       setErrors(result.errors);
@@ -483,7 +499,9 @@ function PaymentDrawer({
         ? "Payment acknowledged · sent to owner"
         : action === "confirm"
           ? "Payment confirmed"
-          : "Payment declined",
+          : action === "void"
+            ? "Payment voided · no longer counted as received"
+            : "Payment declined",
     );
     setAction(null);
   };
@@ -520,7 +538,7 @@ function PaymentDrawer({
             <div className="mt-4 space-y-5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-2xl font-bold tabular-nums">{formatNaira(entry.amount)}</span>
-                <PaymentStatusBadge status={entry.status} />
+                <PaymentStatusBadge status={entry.status} voided={entry.voided} />
               </div>
 
               <Section title="Breakdown">
@@ -550,7 +568,7 @@ function PaymentDrawer({
 
               {entry.declineReason && (
                 <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3">
-                  <p className="font-semibold text-destructive">Decline reason</p>
+                  <p className="font-semibold text-destructive">{entry.voided ? "Void reason" : "Decline reason"}</p>
                   <p className="mt-1">{entry.declineReason}</p>
                 </div>
               )}
@@ -590,7 +608,7 @@ function PaymentDrawer({
                 )}
               </Section>
 
-              {(canAck || canConfirm) && (
+              {(canAck || canConfirm || canDecline || canVoid) && (
                 <div className="flex flex-wrap gap-2 border-t border-border pt-4">
                   {canAck && (
                     <Button size="sm" onClick={() => open("acknowledge")}>
@@ -612,6 +630,16 @@ function PaymentDrawer({
                       Decline
                     </Button>
                   )}
+                  {canVoid && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-destructive/40 text-destructive hover:bg-destructive/5"
+                      onClick={() => open("void")}
+                    >
+                      Void payment
+                    </Button>
+                  )}
                 </div>
               )}
               {!canAck && !canConfirm && entry.status === "acknowledged" && (
@@ -631,14 +659,18 @@ function PaymentDrawer({
                   ? "Acknowledge payment"
                   : action === "confirm"
                     ? "Confirm payment"
-                    : "Decline payment"}
+                    : action === "void"
+                      ? "Void confirmed payment"
+                      : "Decline payment"}
               </DialogTitle>
               <DialogDescription>
                 {action === "acknowledge"
-                  ? "Confirm you received this money. The owner gives final confirmation."
+                  ? "Confirm you received this transfer. The owner gives final confirmation."
                   : action === "confirm"
                     ? "Confirmed money counts as received in totals and reports."
-                    : "Give a reason so the sales representative can correct it."}
+                    : action === "void"
+                      ? "The payment stops counting as received in totals, balances and reports. The record stays in history with your reason."
+                      : "Give a reason so the sales representative can correct it."}
               </DialogDescription>
             </DialogHeader>
             {action === "acknowledge" && (
@@ -667,14 +699,14 @@ function PaymentDrawer({
                 </div>
               </div>
             )}
-            {action === "decline" && (
+            {(action === "decline" || action === "void") && (
               <div>
                 <Label className="text-xs">Reason *</Label>
                 <Textarea
                   className="mt-1.5"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  aria-label="Decline reason"
+                  aria-label={action === "void" ? "Void reason" : "Decline reason"}
                 />
                 <FieldError message={errors.reason} />
               </div>
@@ -687,7 +719,7 @@ function PaymentDrawer({
               <Button
                 disabled={
                   busy ||
-                  (action === "decline" && !reason.trim()) ||
+                  ((action === "decline" || action === "void") && !reason.trim()) ||
                   (action === "acknowledge" && needsReference && !reference.trim())
                 }
                 onClick={run}
@@ -698,7 +730,9 @@ function PaymentDrawer({
                     ? "Acknowledge"
                     : action === "confirm"
                       ? "Confirm"
-                      : "Decline"}
+                      : action === "void"
+                        ? "Void payment"
+                        : "Decline"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -727,18 +761,23 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 const stepLabel = {
   submitted: "Submitted",
   acknowledged: "Acknowledged by manager",
-  confirmed: "Confirmed by owner",
+  confirmed: "Confirmed",
   declined: "Declined",
 };
 function MiniProgress({ entry }: { entry: PaymentEntry }) {
   const done = (step: PaymentTrailStepName) => entry.trail.some((s) => s.step === step);
   const declined = entry.status === "declined";
   const ownerDirect = !done("acknowledged") && (done("confirmed") || (declined && entry.trail.some((s) => s.step === "declined" && s.by !== entry.managerId)));
-  const steps: { key: PaymentTrailStepName; label: string }[] = [
-    { key: "submitted", label: "Submitted" },
-    ...(ownerDirect ? [] : [{ key: "acknowledged" as const, label: "Manager" }]),
-    { key: "confirmed", label: "Owner" },
-  ];
+  const steps: { key: PaymentTrailStepName; label: string }[] = entry.cashOnly && !done("acknowledged")
+    ? [
+        { key: "submitted", label: "Submitted" },
+        { key: "confirmed", label: "Manager" },
+      ]
+    : [
+        { key: "submitted", label: "Submitted" },
+        ...(ownerDirect ? [] : [{ key: "acknowledged" as const, label: "Manager" }]),
+        { key: "confirmed", label: "Owner" },
+      ];
   return (
     <div className="mt-1.5 flex items-center gap-1" aria-label="Payment progress">
       {steps.map((s, i) => {
@@ -750,7 +789,7 @@ function MiniProgress({ entry }: { entry: PaymentEntry }) {
             <span
               className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${isDone ? "bg-success/10 text-success" : isDeclinedHere ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}
             >
-              {isDeclinedHere ? "Declined" : s.label}
+              {isDeclinedHere ? "Declined" : entry.voided && s.key === "confirmed" ? "Voided" : s.label}
             </span>
           </div>
         );
@@ -761,7 +800,8 @@ function MiniProgress({ entry }: { entry: PaymentEntry }) {
 type PaymentTrailStepName = PaymentEntry["trail"][number]["step"];
 function Trail({ db, entry }: { db: Db; entry: PaymentEntry }) {
   const steps = [...entry.trail];
-  if (entry.status === "submitted") steps.push({ step: "acknowledged" });
+  // Still to come: cash goes straight to the manager's confirmation; a transfer is acknowledged first.
+  if (entry.status === "submitted" && !entry.cashOnly) steps.push({ step: "acknowledged" });
   if (entry.status === "submitted" || entry.status === "acknowledged")
     steps.push({ step: "confirmed" });
   return (
@@ -780,7 +820,13 @@ function Trail({ db, entry }: { db: Db; entry: PaymentEntry }) {
             )}
           </span>
           <div>
-            <p className="font-semibold">{stepLabel[s.step]}</p>
+            <p className="font-semibold">
+              {s.step === "declined" && entry.voided
+                ? "Voided"
+                : s.step === "confirmed" && !s.at
+                  ? entry.cashOnly ? "Confirmed by manager" : "Confirmed by owner"
+                  : stepLabel[s.step]}
+            </p>
             <p className="text-[11px] text-muted-foreground">
               {s.at
                 ? `${userName(db, s.by)} · ${formatDate(s.at)} at ${formatTime(s.at)}`
@@ -843,7 +889,7 @@ function SubmitPaymentDialog({
       setErrors(result.errors);
       return;
     }
-    toast.success("Payment submitted for manager acknowledgement");
+    toast.success("Payment submitted to your manager");
     setCash("");
     setTransfer("");
     setReference("");
@@ -858,8 +904,8 @@ function SubmitPaymentDialog({
           <DialogTitle>Submit payment</DialogTitle>
           <DialogDescription>
             Pay in the money you collected this month: your walk-in sales (₦{position.walkInSales.toLocaleString("en-NG")})
-            and customer payments (₦{position.customerCollections.toLocaleString("en-NG")}). Your manager acknowledges
-            it and the Owner confirms it.
+            and customer payments (₦{position.customerCollections.toLocaleString("en-NG")}). Your manager confirms
+            cash; a transfer is acknowledged by your manager and confirmed by the Owner.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">

@@ -84,7 +84,7 @@ export function SaleAuditDetails({ db, saleId }: { db: Db; saleId: string }) {
               <p className="text-xs text-muted-foreground">
                 Customer balance now:{" "}
                 <span className={`font-semibold ${summary.balance < 0 ? "text-destructive" : summary.balance > 0 ? "text-success" : "text-foreground"}`}>
-                  {summary.balance < 0 ? `owes ${formatNaira(-summary.balance)}` : summary.balance > 0 ? `in credit ${formatNaira(summary.balance)}` : "settled"}
+                  {summary.balance < 0 ? `debt ${formatNaira(-summary.balance)}` : summary.balance > 0 ? `in credit ${formatNaira(summary.balance)}` : "settled"}
                 </span>
                 {summary.pending > 0 && ` · ${formatNaira(summary.pending)} awaiting confirmation`}
               </p>

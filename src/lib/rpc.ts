@@ -229,7 +229,10 @@ export type PlannedRpcs = {
     p_transfer_reference: string | null;
     p_proof_name: string | null;
   };
-  /** Payment chain step 3: owner confirms a submitted or acknowledged payment. Notifies the rep. */
+  /**
+   * Final step: the branch manager confirms a cash payment; the owner confirms a
+   * transfer (submitted or acknowledged). Notifies the rep.
+   */
   confirm_customer_payment: {
     p_payment_id: string;
   };
@@ -238,6 +241,11 @@ export type PlannedRpcs = {
    * submitted or acknowledged. Notifies the rep.
    */
   decline_customer_payment: {
+    p_payment_id: string;
+    p_reason: string;
+  };
+  /** Owner voids a confirmed payment: it becomes declined ("Voided: reason") and stops counting. */
+  void_customer_payment: {
     p_payment_id: string;
     p_reason: string;
   };
@@ -264,12 +272,17 @@ export type PlannedRpcs = {
     p_transfer_reference: string | null;
     p_proof_name: string | null;
   };
-  /** Step 3: the owner confirms a submitted or acknowledged payment. */
+  /** Final step: the branch manager confirms a cash-only pay-in; the owner confirms one with a transfer. */
   confirm_payment: {
     p_payment_id: string;
   };
   /** Decline with a reason: a manager while submitted, the owner while submitted or acknowledged. */
   decline_payment: {
+    p_payment_id: string;
+    p_reason: string;
+  };
+  /** Owner voids a confirmed pay-in: it becomes declined ("Voided: reason") and stops counting. */
+  void_payment: {
     p_payment_id: string;
     p_reason: string;
   };

@@ -105,7 +105,7 @@ export function usePendingPayments() {
 }
 
 /** Each payment chain step changes payments, balances, remittances, notifications and the audit log. */
-function usePaymentMutation<N extends "submit_payment" | "acknowledge_payment" | "confirm_payment" | "decline_payment">(name: N) {
+function usePaymentMutation<N extends "submit_payment" | "acknowledge_payment" | "confirm_payment" | "decline_payment" | "void_payment">(name: N) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -125,9 +125,11 @@ function usePaymentMutation<N extends "submit_payment" | "acknowledge_payment" |
 
 /** Step 1: sales rep submits a collection (RPC submit_payment). */
 export const useSubmitPayment = () => usePaymentMutation("submit_payment");
-/** Step 2: branch manager acknowledges (RPC acknowledge_payment). */
+/** Step 2 (transfers): branch manager acknowledges (RPC acknowledge_payment). */
 export const useAcknowledgePayment = () => usePaymentMutation("acknowledge_payment");
-/** Step 3: owner confirms (RPC confirm_payment). */
+/** Final step: manager confirms cash, owner confirms transfers (RPC confirm_payment). */
 export const useConfirmPayment = () => usePaymentMutation("confirm_payment");
 /** Manager or owner declines (RPC decline_payment). */
 export const useDeclinePayment = () => usePaymentMutation("decline_payment");
+/** Owner voids a confirmed payment (RPC void_payment). */
+export const useVoidPayment = () => usePaymentMutation("void_payment");

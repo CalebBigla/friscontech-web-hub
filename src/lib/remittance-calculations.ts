@@ -288,6 +288,15 @@ export function validateRemittanceReconciliation(
   };
 }
 
+/** Submitted (or, for drafts, created) within the date range, inclusive. */
+export const remittanceInRange = (
+  row: Pick<ManagerRemittance, "submittedAt" | "createdAt">,
+  range: { from: string; to: string },
+) => {
+  const day = (row.submittedAt ?? row.createdAt).slice(0, 10);
+  return day >= range.from && day <= range.to;
+};
+
 export function getManagerRemittances(db: Db, scope: AccessScope, filters: RemittanceFilters = {}) {
   return db.remittances
     .filter((remittance) => {

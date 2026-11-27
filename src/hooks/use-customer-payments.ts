@@ -60,7 +60,7 @@ export function useCustomerPayments(customerId: string | undefined) {
 }
 
 /** Each payment chain step changes payments, balances, notifications and the audit log. */
-function useCustomerPaymentMutation<N extends "record_customer_payment" | "acknowledge_customer_payment" | "confirm_customer_payment" | "decline_customer_payment">(name: N) {
+function useCustomerPaymentMutation<N extends "record_customer_payment" | "acknowledge_customer_payment" | "confirm_customer_payment" | "decline_customer_payment" | "void_customer_payment">(name: N) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -80,9 +80,11 @@ function useCustomerPaymentMutation<N extends "record_customer_payment" | "ackno
 
 /** Step 1: sales rep records a payment (RPC record_customer_payment). */
 export const useRecordCustomerPayment = () => useCustomerPaymentMutation("record_customer_payment");
-/** Step 2: manager acknowledges (RPC acknowledge_customer_payment). */
+/** Step 2 (transfers): manager acknowledges (RPC acknowledge_customer_payment). */
 export const useAcknowledgeCustomerPayment = () => useCustomerPaymentMutation("acknowledge_customer_payment");
-/** Step 3: owner confirms (RPC confirm_customer_payment). */
+/** Final step: manager confirms cash, owner confirms transfers (RPC confirm_customer_payment). */
 export const useConfirmCustomerPayment = () => useCustomerPaymentMutation("confirm_customer_payment");
 /** Manager (while submitted) or owner declines (RPC decline_customer_payment). */
 export const useDeclineCustomerPayment = () => useCustomerPaymentMutation("decline_customer_payment");
+/** Owner voids a confirmed payment (RPC void_customer_payment). */
+export const useVoidCustomerPayment = () => useCustomerPaymentMutation("void_customer_payment");

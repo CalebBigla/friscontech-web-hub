@@ -7,18 +7,19 @@ import { AppShell } from "@/components/app-shell";
 import { CustomerFormDialog } from "@/components/customers/customer-dialogs";
 import { DataGate, EmptyState, FilterSelect, Panel, SearchBox, StatTile } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { getCustomerSummary, getCustomersForScope, needsReassignment } from "@/lib/customer-calculations";
+import { balancePosition, getCustomerSummary, getCustomersForScope, needsReassignment } from "@/lib/customer-calculations";
 import { formatNaira, formatNumber } from "@/lib/format";
 import { getAccessScope, useCurrentUserId } from "@/lib/session";
 import { useCustomerAccounts } from "@/hooks/use-customers";
 import { useLiveWorkspace } from "@/hooks/use-live-workspace";
 
 export function BalanceBadge({ balance }: { balance: number }) {
-  if (balance < 0)
+  const position = balancePosition(balance);
+  if (position === "debt")
     return (
-      <span className="status status-danger whitespace-nowrap">Owes {formatNaira(-balance)}</span>
+      <span className="status status-danger whitespace-nowrap">Debt {formatNaira(-balance)}</span>
     );
-  if (balance > 0)
+  if (position === "credit")
     return (
       <span className="status status-success whitespace-nowrap">
         In credit {formatNaira(balance)}
@@ -58,19 +59,14 @@ export function CustomersPage() {
       (repFilter === "all" || (repFilter === "unmanaged" ? unmanaged : c.assignedRepId === repFilter)) &&
       (status === "all" || c.status === status) &&
       (branchId === "all" || c.branchId === branchId) &&
-      (balance === "all" ||
-        (balance === "owes"
-          ? s.balance < 0
-          : balance === "credit"
-            ? s.balance > 0
-            : s.balance === 0)) &&
+      (balance === "all" || balancePosition(s.balance) === balance) &&
       (!needle ||
         [c.name, c.contactPerson, c.phone, c.email].some((v) => v.toLowerCase().includes(needle))),
   );
   const unmanagedCount = all.filter((r) => r.unmanaged).length;
   const repName = (id: string | null) => db.users.find((u) => u.id === id)?.name ?? "—";
   const totalOwed = all.reduce((sum, r) => sum + r.summary.owed, 0);
-  const owing = all.filter((r) => r.summary.balance < 0).length;
+  const owing = all.filter((r) => balancePosition(r.summary.balance) === "debt").length;
   const pending = all.reduce((sum, r) => sum + r.summary.pending, 0);
   const branches = db.branches.filter(
     (b) => scope.branchIds === null || scope.branchIds.includes(b.id),
@@ -107,7 +103,7 @@ export function CustomersPage() {
         "Total sold (NGN)": s.debits,
         "Total paid (NGN)": s.credits,
         "Balance (NGN)": s.balance,
-        Position: s.balance < 0 ? "Owes" : s.balance > 0 ? "In credit" : "Settled",
+        Position: { debt: "Debt", credit: "In credit", settled: "Settled" }[balancePosition(s.balance)],
       }));
       const ws = XLSX.utils.json_to_sheet(data);
       ws["!cols"] = Object.keys(data[0] ?? { Customer: "" }).map((k) => ({ wch: Math.max(12, k.length + 2) }));
@@ -157,9 +153,9 @@ export function CustomersPage() {
         />
         <StatTile
           tone="danger"
-          label="Total owed"
+          label="Total debt"
           value={formatNaira(totalOwed)}
-          detail={`${owing} customer${owing === 1 ? "" : "s"} owe`}
+          detail={`${owing} customer${owing === 1 ? "" : "s"} in debt`}
         />
         <StatTile
           tone="warning"
@@ -196,7 +192,7 @@ export function CustomersPage() {
               ["Customers", formatNumber(repTotals.customers), "text-foreground"],
               ["Total sold", formatNaira(repTotals.sold), "text-foreground"],
               ["Total paid", formatNaira(repTotals.paid), "text-success"],
-              ["Customers still owe", formatNaira(repTotals.owed), repTotals.owed > 0 ? "text-destructive" : "text-foreground"],
+              ["Customer debt", formatNaira(repTotals.owed), repTotals.owed > 0 ? "text-destructive" : "text-foreground"],
               ["Awaiting confirmation", formatNaira(repTotals.pending), "text-warning"],
             ].map(([label, value, tone]) => (
               <div key={label} className="rounded-lg bg-muted/50 p-3">
@@ -206,7 +202,7 @@ export function CustomersPage() {
             ))}
           </dl>
           {repTotals.inCredit > 0 && (
-            <p className="mt-2 text-[11px] text-muted-foreground">Customers in credit hold {formatNaira(repTotals.inCredit)} more than they owe.</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Customers in credit hold {formatNaira(repTotals.inCredit)} more than their debt.</p>
           )}
         </section>
       )}
@@ -255,7 +251,7 @@ export function CustomersPage() {
               className="w-32"
               options={[
                 { value: "all", label: "Any balance" },
-                { value: "owes", label: "Owes" },
+                { value: "debt", label: "Debt" },
                 { value: "credit", label: "In credit" },
                 { value: "settled", label: "Settled" },
               ]}
@@ -320,7 +316,7 @@ export function CustomersPage() {
                     <td className="px-4 py-3">{s.orders}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`font-bold tabular-nums ${s.balance < 0 ? "text-destructive" : ""}`}
+                        className={`font-bold tabular-nums ${balancePosition(s.balance) === "debt" ? "text-destructive" : ""}`}
                       >
                         {formatNaira(s.balance)}
                       </span>

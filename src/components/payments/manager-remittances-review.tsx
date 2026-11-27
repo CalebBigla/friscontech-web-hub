@@ -14,31 +14,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PeriodFilter, describeRange, periodRange, type PeriodState } from "@/components/period-filter";
 import { Textarea } from "@/components/ui/textarea";
 import type { Db, ManagerRemittance } from "@/data/mock-db";
 import { formatDate, formatMonth, formatNaira, formatTime } from "@/lib/format";
-import { getOwnerManagerPaymentSummary, isValidPaymentPeriod } from "@/lib/payment-calculations";
-import { getManagerRemittances } from "@/lib/remittance-calculations";
+import { getOwnerManagerPaymentSummary } from "@/lib/payment-calculations";
+import { getManagerRemittances, remittanceInRange } from "@/lib/remittance-calculations";
 import { getAccessScope, useCurrentUserId } from "@/lib/session";
 import { useLiveWorkspace } from "@/hooks/use-live-workspace";
 import { useConfirmManagerRemittance, useDeclineManagerRemittance } from "@/hooks/use-remittances";
 import { runWrite, validateRemittanceConfirm, validateRemittanceDecline, type FieldErrors } from "@/lib/validation";
 
-const currentMonth = (dbDate: string) => dbDate.slice(0, 7);
-const monthLabel = (period: string) =>
-  isValidPaymentPeriod(period)
-    ? new Intl.DateTimeFormat("en-NG", { month: "long", year: "numeric", timeZone: "UTC" }).format(
-        new Date(`${period}-01T00:00:00Z`),
-      )
-    : period;
-
 /** Owner review of Manager → Owner remittances. */
 export function ManagerRemittancesReview() {
   const { db, isLoading, error } = useLiveWorkspace();
   const scope = getAccessScope(db, useCurrentUserId());
-  const [period, setPeriod] = useState(currentMonth(db.tenant.referenceDate));
+  // Day, week, month (default) or chosen dates, by submission date.
+  const [period, setPeriod] = useState<PeriodState>({ period: "month" });
   if (isLoading || error)
     return (
       <AppShell title="Manager remittances">
@@ -58,9 +51,12 @@ function OwnerManagerPaymentPage({
 }: {
   db: Db;
   scope: ReturnType<typeof getAccessScope>;
-  period: string;
-  onPeriodChange: (value: string) => void;
+  period: PeriodState;
+  onPeriodChange: (value: PeriodState) => void;
 }) {
+  const today = db.tenant.referenceDate;
+  const range = periodRange(period, today);
+  const rangeLabel = describeRange(range);
   const [branchId, setBranchId] = useState("all");
   const [status, setStatus] = useState("all");
   const [reviewId, setReviewId] = useState<string | null>(null);
@@ -69,7 +65,10 @@ function OwnerManagerPaymentPage({
   const [declineReason, setDeclineReason] = useState("");
   const confirmRemittance = useConfirmManagerRemittance();
   const declineRemittance = useDeclineManagerRemittance();
-  const allRows = useMemo(() => getManagerRemittances(db, scope, { period }), [db, scope, period]);
+  const allRows = useMemo(
+    () => getManagerRemittances(db, scope).filter((row) => remittanceInRange(row, range)),
+    [db, scope, range.from, range.to], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const reviewRow = allRows.find((row) => row.id === reviewId) ?? null;
   const summary = getOwnerManagerPaymentSummary(allRows);
   const rows = allRows.filter(
@@ -111,25 +110,10 @@ function OwnerManagerPaymentPage({
         <div>
           <h1 className="text-xl font-bold">Manager Remittances</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Incoming Manager → Owner remittances for {monthLabel(period)}.
+            Incoming Manager → Owner remittances submitted {rangeLabel}.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Label
-            htmlFor="owner-manager-payment-period"
-            className="self-center text-xs text-muted-foreground"
-          >
-            Period
-          </Label>
-          <Input
-            id="owner-manager-payment-period"
-            type="month"
-            max={currentMonth(db.tenant.referenceDate)}
-            value={period}
-            onChange={(event) => onPeriodChange(event.target.value)}
-            className="w-full sm:w-44"
-          />
-        </div>
+        <PeriodFilter today={today} value={period} onChange={onPeriodChange} />
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
@@ -137,7 +121,7 @@ function OwnerManagerPaymentPage({
           tone="success"
           label="Total Cash"
           value={formatNaira(summary.cash)}
-          detail={monthLabel(period)}
+          detail={rangeLabel}
         />
         <MetricCard
           icon={Landmark}
@@ -430,7 +414,7 @@ function OwnerManagerPaymentTable({
       </div>
       {!rows.length && (
         <EmptyState
-          title="No Manager payments for this period"
+          title="No Manager remittances in this period"
           detail="Manager remittances will appear here when submitted."
         />
       )}

@@ -293,35 +293,56 @@ function paymentScopeError(db: Db, scope: AccessScope, payment: ChainPayment, ro
   return null;
 }
 
-/** Step 2: the assigned manager acknowledges; a transfer needs its reference. */
+/** Cash-only payments are settled by the branch manager; anything with a transfer goes to the owner. */
+const isCashOnly = (payment: ChainPayment) =>
+  "transferAmount" in payment ? payment.transferAmount <= 0 : payment.method === "cash";
+
+/** Step 2 (transfers only): the assigned manager acknowledges; the transfer needs its reference. */
 export function validateAcknowledgePayment(db: Db, scope: AccessScope, payment: ChainPayment, existingReference: string | undefined, details: PaymentAcknowledgement): FieldErrors | null {
   const denied = paymentScopeError(db, scope, payment, "manager");
   if (denied) return { form: denied };
+  if (isCashOnly(payment)) return { form: "Cash payments are confirmed by the manager, not acknowledged" };
   if (payment.status !== "submitted") return { form: "Only submitted payments can be acknowledged" };
-  const isTransfer = "transferAmount" in payment ? payment.transferAmount > 0 : payment.method === "transfer";
-  if (isTransfer && !(details.transferReference?.trim() || existingReference))
+  if (!(details.transferReference?.trim() || existingReference))
     return { transferReference: "Enter the transfer reference before acknowledging" };
   return null;
 }
 
-/** Step 3: the owner confirms a submitted or acknowledged payment. */
+/** Final step: the manager confirms cash, the owner confirms transfers (submitted or acknowledged). */
 export function validateConfirmPayment(db: Db, scope: AccessScope, payment: ChainPayment): FieldErrors | null {
-  const denied = paymentScopeError(db, scope, payment, "owner");
+  const cash = isCashOnly(payment);
+  if (cash && scope.user.role !== "manager") return { form: "Cash payments are confirmed by the branch manager" };
+  if (!cash && scope.user.role !== "owner") return { form: "Only the business owner can confirm transfers" };
+  const denied = paymentScopeError(db, scope, payment, cash ? "manager" : "owner");
   if (denied) return { form: denied };
   if (payment.status !== "acknowledged" && payment.status !== "submitted") return { form: "Only pending payments can be confirmed" };
   return null;
 }
 
-/** A manager declines while submitted; the owner while submitted or acknowledged. */
+/**
+ * Cash: the manager declines while pending. Transfer: the manager while submitted,
+ * the owner while submitted or acknowledged.
+ */
 export function validateDeclinePayment(db: Db, scope: AccessScope, payment: ChainPayment, reason: string): FieldErrors | null {
   const role = scope.canConfirmPayments ? "owner" : "manager";
   if (scope.user.role !== "manager" && scope.user.role !== "owner") return { form: "You cannot decline this payment" };
+  const cash = isCashOnly(payment);
+  if (cash && role === "owner") return { form: "Cash payments are declined by the branch manager" };
   const denied = paymentScopeError(db, scope, payment, role);
   if (denied) return { form: denied };
-  if (role === "manager" && payment.status !== "submitted") return { form: "Only submitted payments can be declined by a manager" };
-  if (role === "owner" && payment.status !== "acknowledged" && payment.status !== "submitted")
-    return { form: "Only pending payments can be declined by the owner" };
+  const pending = payment.status === "acknowledged" || payment.status === "submitted";
+  if (role === "manager" && !cash && payment.status !== "submitted") return { form: "Only submitted payments can be declined by a manager" };
+  if (!pending) return { form: "Only pending payments can be declined" };
   if (!reason.trim()) return { reason: "A decline reason is required" };
+  return null;
+}
+
+/** The owner voids a confirmed payment; it then stops counting as received. */
+export function validateVoidPayment(db: Db, scope: AccessScope, payment: ChainPayment, reason: string): FieldErrors | null {
+  const denied = paymentScopeError(db, scope, payment, "owner");
+  if (denied || scope.user.role !== "owner") return { form: denied ?? "Only the business owner can void a payment" };
+  if (payment.status !== "confirmed") return { form: "Only confirmed payments can be voided" };
+  if (!reason.trim()) return { reason: "A reason is required" };
   return null;
 }
 

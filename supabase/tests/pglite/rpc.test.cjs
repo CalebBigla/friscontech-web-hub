@@ -267,6 +267,24 @@ module.exports = async function run(db) {
   err("acknowledge_payment: wrong tenant", await as(ID.mgrB1, `SELECT public.acknowledge_payment($1,null,null)`, [pay.id]), { includes: "not found" });
   ok("acknowledge_payment: branch manager", await as(ID.mgrA1, `SELECT public.acknowledge_payment($1,null,null)`, [pay.id]));
   err("decline_payment: rep cannot", await as(ID.repA1, `SELECT public.decline_payment($1,'x')`, [pay.id]), DENY);
+  // Transfers are confirmed by the Owner, never the manager.
+  err("confirm_payment: manager cannot confirm a transfer", await as(ID.mgrA1, `SELECT public.confirm_payment($1)`, [pay.id]), DENY);
+  // Cash: the branch manager confirms; the Owner does not.
+  const cash = ok("submit_payment: cash only", await as(ID.repA1, `SELECT * FROM public.submit_payment($1,20000,0,null,null,null)`, [period]));
+  err("acknowledge_payment: cash is not acknowledged", await as(ID.mgrA1, `SELECT public.acknowledge_payment($1,null,null)`, [cash.id]), { includes: "Cash payments" });
+  err("confirm_payment: owner cannot confirm cash", await as(ID.owner, `SELECT public.confirm_payment($1)`, [cash.id]), DENY);
+  err("decline_payment: owner cannot decline cash", await as(ID.owner, `SELECT public.decline_payment($1,'x')`, [cash.id]), DENY);
+  err("confirm_payment: other branch manager cannot confirm cash", await as(ID.mgrA2, `SELECT public.confirm_payment($1)`, [cash.id]), DENY);
+  const cashOk = ok("confirm_payment: branch manager confirms cash", await as(ID.mgrA1, `SELECT * FROM public.confirm_payment($1)`, [cash.id]));
+  check("confirm_payment: cash confirmed by the manager", cashOk?.status === "confirmed" && cashOk?.confirmed_by === ID.mgrA1, JSON.stringify(cashOk));
+  // Void: Owner only, confirmed only.
+  err("void_payment: manager cannot", await as(ID.mgrA1, `SELECT public.void_payment($1,'x')`, [cash.id]), DENY);
+  err("void_payment: only confirmed", await as(ID.owner, `SELECT public.void_payment($1,'x')`, [pay.id]), { includes: "confirmed" });
+  err("void_payment: reason required", await as(ID.owner, `SELECT public.void_payment($1,' ')`, [cash.id]), { hint: "reason" });
+  const voided = ok("void_payment: owner", await as(ID.owner, `SELECT * FROM public.void_payment($1,'Counted twice')`, [cash.id]));
+  check("void_payment: declined, confirmation kept", voided?.status === "declined" && !!voided?.confirmed_at
+    && voided?.decline_reason === "Voided: Counted twice", JSON.stringify(voided));
+  err("void_payment: repeat", await as(ID.owner, `SELECT public.void_payment($1,'x')`, [cash.id]), { includes: "confirmed" });
 
   // ---------------- expenses ----------------
   const expKey = "55555555-5555-5555-5555-555555555555";
@@ -313,6 +331,12 @@ module.exports = async function run(db) {
     `SELECT public.create_owner_remittance('supplier','X',1,'cheque',null,CURRENT_DATE,'x',null,null)`), { hint: "paymentMethod" });
   err("create_owner_remittance: manager cannot", await as(ID.mgrA1,
     `SELECT public.create_owner_remittance('supplier','X',1,'cash',null,CURRENT_DATE,'x',null,null)`), DENY);
+
+  // ---------------- void a customer payment ----------------
+  err("void_customer_payment: manager cannot", await as(ID.mgrA1, `SELECT public.void_customer_payment($1,'x')`, [cp.id]), DENY);
+  const cpVoid = ok("void_customer_payment: owner", await as(ID.owner, `SELECT * FROM public.void_customer_payment($1,'Wrong customer')`, [cp.id]));
+  check("void_customer_payment: declined, confirmation kept", cpVoid?.status === "declined" && !!cpVoid?.confirmed_at
+    && cpVoid?.decline_reason === "Voided: Wrong customer", JSON.stringify(cpVoid));
 
   // ---------------- targets ----------------
   const tgt = ok("create_target: owner", await as(ID.owner, `SELECT * FROM public.create_target($1,$2,1500000.4)`, [ID.repA1, period]));

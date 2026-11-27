@@ -71,6 +71,12 @@ export function getCustomerCredits(db: Db, customerId: string) {
 export const getCustomerBalance = (db: Db, customerId: string) =>
   getCustomerCredits(db, customerId) - getCustomerDebits(db, customerId);
 
+/** Balances are sums of naira amounts; ignore sub-kobo float noise so a settled account reads as settled. */
+export const balancePosition = (balance: number): "debt" | "credit" | "settled" => {
+  const kobo = Math.round(balance * 100);
+  return kobo < 0 ? "debt" : kobo > 0 ? "credit" : "settled";
+};
+
 export function getCustomerSummary(db: Db, customer: Customer) {
   const debits = getCustomerDebits(db, customer.id);
   const credits = getCustomerCredits(db, customer.id);
