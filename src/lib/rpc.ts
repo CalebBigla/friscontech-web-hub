@@ -141,8 +141,8 @@ export type PlannedRpcs = {
   /**
    * Rep: an order for one of their customers (20261116100000). Every line is checked
    * against what the branch has available (on hand minus reserved) with the stock rows
-   * locked, then reserved. The branch storekeepers are notified. Returns the
-   * customer_orders row.
+   * locked, then reserved. Promo items go on at ₦0 (20261127100000). The branch
+   * storekeepers are notified. Returns the customer_orders row.
    */
   place_customer_order: {
     p_customer_id: string;
@@ -159,6 +159,17 @@ export type PlannedRpcs = {
   cancel_customer_order: { p_order_id: string; p_reason: string };
   /** Owner: undo a fulfilled order (lines voided, units back in stock, off the ledger). */
   void_customer_order: { p_order_id: string; p_reason: string };
+  /**
+   * Owner (any branch) or the order's branch manager (20261127100000): new unit prices
+   * for lines of an order that is waiting or fulfilled. Never above the list price.
+   * The rep sees only the new price. Returns the customer_orders row.
+   */
+  change_order_prices: { p_order_id: string; p_lines: { sale_id: string; unit_price: number }[]; p_reason: string };
+  /**
+   * Owner (any branch) or a manager (own branch): move units of regular products into
+   * each product's promo twin, made on first use. Returns [{ product_id, promo_product_id, quantity }].
+   */
+  convert_to_promo: { p_branch_id: string; p_items: { product_id: string; quantity: number }[]; p_reason: string };
   /** Orders with their lines for whoever may read them. */
   get_customer_orders: Record<string, never>;
   /** Rep: a customer returns units of a sale for another product. Returns the stock_exchanges row. */

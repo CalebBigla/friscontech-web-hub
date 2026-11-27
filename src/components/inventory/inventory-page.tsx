@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Eye, History, Layers, MoreHorizontal, Package, PackageX, Plus, SlidersHorizontal, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Eye, Gift, History, Layers, MoreHorizontal, Package, PackageX, Plus, SlidersHorizontal, Wallet } from "lucide-react";
 
 import { NearestExpiryBadge } from "@/components/expiry/expiry-widgets";
 import { AppShell } from "@/components/app-shell";
@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ALL, DataGate, EmptyState, FilterSelect, MetricCard, Panel, SearchBox, StockStatusBadge } from "@/components/shared";
 import { AddStockDialog } from "@/components/inventory/add-stock-dialog";
 import { AdjustStockDialog } from "@/components/inventory/adjust-stock-dialog";
+import { ConvertToPromoDialog } from "@/components/inventory/convert-to-promo-dialog";
 import { MovementsSheet } from "@/components/inventory/movements-sheet";
 import type { InventoryRecord } from "@/data/mock-db";
 import { useLiveWorkspace } from "@/hooks/use-live-workspace";
@@ -37,6 +38,7 @@ export function InventoryPage({ initialBranch, initialStatus }: { initialBranch?
   const [addDefaults, setAddDefaults] = useState<{ branchId?: string; productId?: string }>();
   const [adjusting, setAdjusting] = useState<InventoryRow | null>(null);
   const [movesOpen, setMovesOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
 
   const activeBranch = multiBranch ? branch : ALL;
   const filterScope = { branchIds: scope.branchIds, branchId: activeBranch === ALL ? undefined : activeBranch, category: category === ALL ? undefined : category };
@@ -84,6 +86,7 @@ export function InventoryPage({ initialBranch, initialStatus }: { initialBranch?
     <AppShell title="Inventory" subtitle={simple ? "Products available to you" : "Monitor stock levels, availability, and inventory movement across your branches."}
       actions={<div className="flex gap-2">
         {!simple && <Button variant="outline" onClick={() => setMovesOpen(true)}><History className="size-4" /><span className="hidden sm:inline">View Movements</span></Button>}
+        {scope.canConvertToPromo && <Button variant="outline" onClick={() => setPromoOpen(true)}><Gift className="size-4" /><span className="hidden sm:inline">Promo</span></Button>}
         {scope.canManageStock && <Button onClick={() => openAdd()}><Plus className="size-4" /><span className="hidden sm:inline">Add Stock</span></Button>}
       </div>}>
       <div className="mb-5"><h1 className="text-xl font-bold">{simple ? "Available Products" : "Inventory"}</h1><p className="mt-1 text-xs text-muted-foreground">{simple ? "Products available to you and how much stock is on hand" : "Monitor stock levels, availability, and inventory movement across your branches"}{activeBranch !== ALL ? ` · ${db.branches.find((b) => b.id === activeBranch)?.name}` : scope.branchIds ? ` · ${branches[0]?.name ?? ""}` : " · All branches"}</p></div>
@@ -157,6 +160,7 @@ export function InventoryPage({ initialBranch, initialStatus }: { initialBranch?
 
       <AddStockDialog open={addOpen} onOpenChange={setAddOpen} scope={scope} defaults={addDefaults} />
       <AdjustStockDialog record={adjusting?.record ?? null} productName={adjusting?.product.name ?? ""} onClose={() => setAdjusting(null)} />
+      {scope.canConvertToPromo && <ConvertToPromoDialog open={promoOpen} onOpenChange={setPromoOpen} db={db} scope={scope} />}
       {!simple && <MovementsSheet open={movesOpen} onOpenChange={setMovesOpen} branchIds={scope.branchIds} branchId={activeBranch === ALL ? undefined : activeBranch} />}
     </AppShell>
   );

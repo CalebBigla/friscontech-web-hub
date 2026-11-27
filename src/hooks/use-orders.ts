@@ -17,6 +17,8 @@ export type OrderLine = {
   lineTotal: number;
   isPromo: boolean;
   status: "pending" | "completed" | "voided";
+  /** The price before it was changed; only sent to the Owner and managers, null when unchanged. */
+  listPrice: number | null;
 };
 export type CustomerOrderRecord = {
   id: string;
@@ -38,7 +40,7 @@ export type CustomerOrderRecord = {
   lines: OrderLine[];
 };
 
-type RawLine = { sale_id: string; product_id: string; quantity: number; unit_price: number; line_total: number; is_promo: boolean; status: string };
+type RawLine = { sale_id: string; product_id: string; quantity: number; unit_price: number; line_total: number; is_promo: boolean; status: string; list_price?: number | null };
 type RawOrder = {
   id: string; code: string; branch_id: string; customer_id: string; customer_name: string; rep_id: string; status: string;
   note: string | null; created_at: string; fulfilled_at: string | null; fulfilled_by: string | null; acknowledged_at: string | null;
@@ -53,6 +55,7 @@ const toOrder = (r: RawOrder): CustomerOrderRecord => ({
   lines: (r.lines ?? []).map((l) => ({
     saleId: l.sale_id, productId: l.product_id, quantity: Number(l.quantity), unitPrice: Number(l.unit_price),
     lineTotal: Number(l.line_total), isPromo: l.is_promo, status: l.status as OrderLine["status"],
+    listPrice: l.list_price == null ? null : Number(l.list_price),
   })),
 });
 
@@ -79,7 +82,7 @@ export function useCustomerOrders(enabled = true) {
 }
 
 /** An order step moves stock, sales, the customer's ledger, notifications and the audit log. */
-function useOrderMutation<N extends "place_customer_order" | "fulfil_customer_order" | "acknowledge_customer_order" | "cancel_customer_order" | "void_customer_order">(name: N) {
+function useOrderMutation<N extends "place_customer_order" | "fulfil_customer_order" | "acknowledge_customer_order" | "cancel_customer_order" | "void_customer_order" | "change_order_prices">(name: N) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const tenantId = user?.tenantId ?? "";
@@ -98,3 +101,5 @@ export const useFulfilOrder = () => useOrderMutation("fulfil_customer_order");
 export const useAcknowledgeOrder = () => useOrderMutation("acknowledge_customer_order");
 export const useCancelOrder = () => useOrderMutation("cancel_customer_order");
 export const useVoidOrder = () => useOrderMutation("void_customer_order");
+/** Owner or the branch manager: new unit prices on an order (the rep sees just the price). */
+export const useChangeOrderPrices = () => useOrderMutation("change_order_prices");

@@ -165,8 +165,10 @@ module.exports = async function customersSales(db, { ID, tenantA }) {
   // Promo stock uses the normal inventory flow.
   ok("promo: stock added like any product", await as(ID.owner,
     `SELECT public.add_stock($1,$2,50,null,null,'2028-01-01',false,null,null)`, [ID.brA1, promo.id]));
-  err("promo: a rep can't order a promo item", await as(ID.repA1, `SELECT * FROM public.place_customer_order($1,$2::jsonb,null,null)`,
-    [shop.id, items(line(), { product_id: promo.id, quantity: 3 })]), { hint: "items", includes: "promo item" });
+  // Reps may order promo items the branch has (20261127100000); this one is cancelled again.
+  const promoOrdered = ok("promo: a rep can order an available promo item", await as(ID.repA1,
+    `SELECT * FROM public.place_customer_order($1,$2::jsonb,null,null)`, [shop.id, items(line(), { product_id: promo.id, quantity: 3 })]));
+  ok("promo: that order is cancelled", await as(ID.repA1, `SELECT * FROM public.cancel_customer_order($1,'test')`, [promoOrdered?.id]));
 
   const salesBefore = (await one(`SELECT COALESCE(sum(line_total),0)::numeric n FROM public.sales WHERE sales_rep_id=$1`, [ID.repA1])).n;
   const repSale = ok("promo: the rep's order at list price", await order(ID.repA1, shop.id, items(line())));
@@ -191,6 +193,85 @@ module.exports = async function customersSales(db, { ID, tenantA }) {
   err("promo: cannot be sold as a normal line", await walkIn(ID.owner, items({ product_id: promo.id, quantity: 1 })), { includes: "is a promo item" });
   err("promo: a regular product cannot be given as promo", await walkIn(ID.owner, items({ product_id: product.id, quantity: 1, is_promo: true })), { includes: "not a promo item" });
   err("promo: cannot take a discount", await walkIn(ID.owner, items(line(), { product_id: promo.id, quantity: 1, is_promo: true, discount_type: "amount", discount_value: 1 })), { includes: "already free" });
+
+  // ---------------- order prices (20261127100000) ----------------
+  const place = (repId, customerId, itemsJson) => as(repId, `SELECT * FROM public.place_customer_order($1,$2::jsonb,null,null)`, [customerId, itemsJson]);
+  const priced = ok("prices: a rep's order", await place(ID.repA1, shop.id, items(line({ quantity: 4 }))));
+  const pricedSale = (await one(`SELECT id FROM public.sales WHERE order_id=$1`, [priced?.id]))?.id;
+  const reprice = (who, price, reason = "Loyal customer", orderId = priced?.id, saleId = pricedSale) => as(who,
+    `SELECT * FROM public.change_order_prices($1,$2::jsonb,$3)`, [orderId, JSON.stringify([{ sale_id: saleId, unit_price: price }]), reason]);
+  const saleRow = async (id = pricedSale) => one(`SELECT unit_price, line_total, discount_amount, status FROM public.sales WHERE id=$1`, [id]);
+  err("prices: rep cannot", await reprice(ID.repA1, 900), DENY);
+  err("prices: storekeeper cannot", await reprice(ID.skA1, 900), DENY);
+  err("prices: another branch's manager cannot", await reprice(ID.mgrA2, 900), DENY);
+  err("prices: reason required", await reprice(ID.mgrA1, 900, " "), { hint: "reason" });
+  err("prices: not above the list price", await reprice(ID.mgrA1, 1200), { hint: "lines", includes: "list price" });
+  err("prices: not zero", await reprice(ID.mgrA1, 0), { hint: "lines" });
+  ok("prices: the branch manager lowers it while waiting", await reprice(ID.mgrA1, 900));
+  const lowered = await saleRow();
+  check("prices: the line carries the new price", close(lowered?.unit_price, 900) && close(lowered?.line_total, 3600) && close(lowered?.discount_amount, 0), JSON.stringify(lowered));
+  const change = await one(`SELECT list_price, old_price, new_price, changed_by FROM public.order_price_changes WHERE sale_id=$1`, [pricedSale]);
+  check("prices: the change is kept", close(change?.list_price, 1000) && close(change?.old_price, 1000) && close(change?.new_price, 900) && change?.changed_by === ID.mgrA1, JSON.stringify(change));
+  check("prices: a rep cannot read the changes", Number((await as(ID.repA1, `SELECT count(*) n FROM public.order_price_changes`)).rows?.[0]?.n) === 0);
+  check("prices: a storekeeper cannot read the changes", Number((await as(ID.skA1, `SELECT count(*) n FROM public.order_price_changes`)).rows?.[0]?.n) === 0);
+  check("prices: the manager reads the change", Number((await as(ID.mgrA1, `SELECT count(*) n FROM public.order_price_changes`)).rows?.[0]?.n) >= 1);
+  const lineFor = async (who) => (await as(who, `SELECT lines FROM public.get_customer_orders() WHERE id=$1`, [priced?.id])).rows?.[0]?.lines?.[0];
+  const repLine = await lineFor(ID.repA1);
+  check("prices: the rep sees only the price", close(repLine?.unit_price, 900) && repLine?.list_price == null, JSON.stringify(repLine));
+  const ownerLine = await lineFor(ID.owner);
+  check("prices: the Owner sees the list price", close(ownerLine?.list_price, 1000), JSON.stringify(ownerLine));
+  const repNote = await one(`SELECT message FROM public.notifications WHERE recipient_id=$1 AND type='order_price_changed' AND entity_id=$2`, [ID.repA1, priced?.id]);
+  check("prices: the rep is told the new price", !!repNote && repNote.message.includes("900.00 each") && !/1,000|reduc|discount/i.test(repNote.message), repNote?.message);
+  check("prices: the Owner is told when a manager lowers a price", !!(await one(`SELECT 1 x FROM public.notifications WHERE recipient_id=$1 AND type='order_price_changed' AND entity_id=$2`, [ID.owner, priced?.id])));
+  const auditSeen = async (who) => Number((await as(who, `SELECT count(*) n FROM public.activities WHERE action='Order prices changed'`)).rows?.[0]?.n);
+  check("prices: the audit entry is hidden from the rep", (await auditSeen(ID.repA1)) === 0);
+  check("prices: the Owner sees the audit entry", (await auditSeen(ID.owner)) >= 1);
+  const balanceBefore = Number((await one(`SELECT public.get_customer_balance($1) b`, [shop.id])).b);
+  ok("prices: fulfilled", await as(ID.skA1, `SELECT * FROM public.fulfil_customer_order($1)`, [priced?.id]));
+  check("prices: the customer owes the new total", close(Number((await one(`SELECT public.get_customer_balance($1) b`, [shop.id])).b) - balanceBefore, 3600));
+  ok("prices: the Owner lowers it after fulfilment", await reprice(ID.owner, 800, "Price match"));
+  check("prices: after fulfilment the debt follows", close(Number((await one(`SELECT public.get_customer_balance($1) b`, [shop.id])).b) - balanceBefore, 3200));
+  const second = await one(`SELECT list_price, old_price FROM public.order_price_changes WHERE sale_id=$1 ORDER BY created_at DESC LIMIT 1`, [pricedSale]);
+  check("prices: the list price stays the original", close(second?.list_price, 1000) && close(second?.old_price, 900), JSON.stringify(second));
+  err("prices: the same price again", await reprice(ID.owner, 800), { hint: "lines", includes: "already" });
+  ok("prices: back up to the list price", await reprice(ID.owner, 1000, "Corrected"));
+  err("prices: still never above the list price", await reprice(ID.owner, 1001), { hint: "lines" });
+  const dropped = ok("prices: another order", await place(ID.repA1, shop.id, items(line())));
+  const droppedSale = (await one(`SELECT id FROM public.sales WHERE order_id=$1`, [dropped?.id]))?.id;
+  ok("prices: that order is cancelled", await as(ID.repA1, `SELECT * FROM public.cancel_customer_order($1,'test')`, [dropped?.id]));
+  err("prices: not on a cancelled order", await reprice(ID.owner, 900, "x", dropped?.id, droppedSale), { includes: "cancelled" });
+  err("prices: a line from another order", await reprice(ID.owner, 900, "x", priced?.id, droppedSale), { hint: "lines" });
+
+  // ---------------- stock to promo (20261127100000) ----------------
+  const convert = (who, itemsJson, reason = "Launch giveaway", branch = ID.brA1) => as(who,
+    `SELECT public.convert_to_promo($1,$2::jsonb,$3) r`, [branch, itemsJson, reason]);
+  const soapBefore = await onHand(product.id);
+  err("to promo: rep cannot", await convert(ID.repA1, items({ product_id: product.id, quantity: 10 })), DENY);
+  err("to promo: storekeeper cannot", await convert(ID.skA1, items({ product_id: product.id, quantity: 10 })), DENY);
+  err("to promo: a manager only in their own branch", await convert(ID.mgrA1, items({ product_id: product.id, quantity: 10 }), "x", ID.brA2), DENY);
+  err("to promo: reason required", await convert(ID.mgrA1, items({ product_id: product.id, quantity: 10 }), ""), { hint: "reason" });
+  err("to promo: not a promo item", await convert(ID.mgrA1, items({ product_id: promo.id, quantity: 1 })), { includes: "already a promo item" });
+  err("to promo: not more than is available", await convert(ID.mgrA1, items({ product_id: product.id, quantity: 100000 })), { hint: "quantity" });
+  const converted = ok("to promo: the branch manager moves 10", await convert(ID.mgrA1, items({ product_id: product.id, quantity: 10 })));
+  const twinId = converted?.r?.[0]?.promo_product_id;
+  const twin = await one(`SELECT name, sku, product_type, unit_price, promo_source_id, status FROM public.products WHERE id=$1`, [twinId]);
+  check("to promo: a free promo twin is made", twin?.product_type === "promo" && close(twin?.unit_price, 0) && twin?.promo_source_id === product.id
+    && twin?.name === "Soap Carton (Promo)" && twin?.sku === "SOAP-C-PROMO", JSON.stringify(twin));
+  check("to promo: the units leave the product", (await onHand(product.id)) === soapBefore - 10);
+  check("to promo: and arrive as promo stock", (await onHand(twinId)) === 10);
+  const twinLot = await one(`SELECT expiry_date::text e, quantity_remaining q FROM public.stock_batches WHERE product_id=$1`, [twinId]);
+  check("to promo: the expiry comes along", twinLot?.e === "2028-01-01" && twinLot?.q === 10, JSON.stringify(twinLot));
+  check("to promo: written as promo conversions", Number((await one(`SELECT count(*) n FROM public.inventory_movements WHERE type='promo_conversion' AND product_id IN ($1,$2)`, [product.id, twinId])).n) === 2);
+  const again = ok("to promo: the Owner moves 5 more", await convert(ID.owner, items({ product_id: product.id, quantity: 5 })));
+  check("to promo: the same twin is used", again?.r?.[0]?.promo_product_id === twinId && (await onHand(twinId)) === 15);
+  err("to promo: a rep can't order more promo than is available", await place(ID.repA1, shop.id, items({ product_id: twinId, quantity: 16 })), { includes: "available" });
+  const giveaway = ok("to promo: a rep orders the promo item with a sale", await place(ID.repA1, shop.id, items(line(), { product_id: twinId, quantity: 3 })));
+  const giveLine = await one(`SELECT id, is_promo, unit_price, status FROM public.sales WHERE order_id=$1 AND product_id=$2`, [giveaway?.id, twinId]);
+  check("to promo: the line is free", giveLine?.is_promo === true && close(giveLine?.unit_price, 0) && giveLine?.status === "pending", JSON.stringify(giveLine));
+  err("prices: a promo line has no price to change", await reprice(ID.owner, 100, "x", giveaway?.id, giveLine?.id), { includes: "promo item" });
+  ok("to promo: the storekeeper fulfils it", await as(ID.skA1, `SELECT * FROM public.fulfil_customer_order($1)`, [giveaway?.id]));
+  check("to promo: promo stock falls on fulfilment", (await onHand(twinId)) === 12);
+  err("to promo: reps still can't give promo on a walk-in", await walkIn(ID.mgrA1, items(line(), { product_id: twinId, quantity: 1, is_promo: true })), { hint: "items" });
 
   // ---------------- customer assignment ----------------
   const c1 = ok("create_customer: assigned to the rep who added it", await as(ID.repA1,

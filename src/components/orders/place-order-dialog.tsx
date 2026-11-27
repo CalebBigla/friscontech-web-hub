@@ -22,7 +22,8 @@ type Line = { key: number; productId: string; quantity: string };
 /**
  * A rep's order for one of their customers. Shows what the branch has available
  * (on hand minus units reserved for other orders) and refuses more than that; the
- * server checks again with the stock locked. The storekeeper then fulfils it.
+ * server checks again with the stock locked. Promo items the branch has can go on
+ * the order at no charge. The storekeeper then fulfils it.
  */
 export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomerId }: {
   open: boolean; onOpenChange: (o: boolean) => void; db: Db; scope: AccessScope; presetCustomerId?: string | undefined;
@@ -50,10 +51,13 @@ export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomer
   const branch = db.branches.find((b) => b.id === branchId);
   const customers = getCustomersForScope(db, scope).filter((c) => c.status === "active");
   const customer = customers.find((c) => c.id === customerId);
-  const products = db.products
-    .filter((p) => p.status === "active" && p.productType !== "promo" && db.inventory.some((i) => i.branchId === branchId && i.productId === p.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
   const available = (productId: string) => getAvailableStock(db, productId, branchId);
+  // Products the branch stocks; promo items only while some are available. Promo last.
+  const products = db.products
+    .filter((p) => p.status === "active" && db.inventory.some((i) => i.branchId === branchId && i.productId === p.id)
+      && (p.productType !== "promo" || available(p.id) > 0))
+    .sort((a, b) => Number(a.productType === "promo") - Number(b.productType === "promo") || a.name.localeCompare(b.name));
+  const isPromo = (id: string) => db.products.find((p) => p.id === id)?.productType === "promo";
   const product = (id: string) => db.products.find((p) => p.id === id);
   const qty = (l: Line) => Number(l.quantity);
   const total = lines.reduce((sum, l) => sum + (product(l.productId)?.unitPrice ?? 0) * (qty(l) > 0 ? qty(l) : 0), 0);
@@ -123,7 +127,7 @@ export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomer
                   return (
                     <li key={l.key} className="flex items-center justify-between gap-3 px-3 py-2">
                       <span>{p?.name} × {formatNumber(qty(l))}</span>
-                      <span className="font-semibold tabular-nums">{formatNaira((p?.unitPrice ?? 0) * qty(l))}</span>
+                      <span className="font-semibold tabular-nums">{isPromo(l.productId) ? "Free (promo)" : formatNaira((p?.unitPrice ?? 0) * qty(l))}</span>
                     </li>
                   );
                 })}
@@ -158,7 +162,8 @@ export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomer
                               onChange={(v) => setLine(l.key, { productId: v === "none" ? "" : v })}
                               options={[{ value: "none", label: "Choose a product" }, ...products.map((p) => {
                                 const n = available(p.id);
-                                return { value: p.id, label: `${p.name} · ${formatNaira(p.unitPrice)} · ${n > 0 ? `${formatNumber(n)} available` : "out of stock"}` };
+                                const price = p.productType === "promo" ? "Promo · free" : formatNaira(p.unitPrice);
+                                return { value: p.id, label: `${p.name} · ${price} · ${n > 0 ? `${formatNumber(n)} available` : "out of stock"}` };
                               })]} />
                           </div>
                         </div>
@@ -192,7 +197,7 @@ export function PlaceOrderDialog({ open, onOpenChange, db, scope, presetCustomer
             </>
           )}
           <div className="flex items-center justify-between rounded-md bg-muted p-3">
-            <span className="text-xs text-muted-foreground">Order total (list price)</span>
+            <span className="text-xs text-muted-foreground">Order total{lines.some((l) => isPromo(l.productId)) ? " (promo items free)" : ""}</span>
             <strong className="tabular-nums">{formatNaira(total)}</strong>
           </div>
           <FieldError message={errors.form} />

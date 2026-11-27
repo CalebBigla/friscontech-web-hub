@@ -191,6 +191,21 @@ export function invalidateStock(queryClient: QueryClient, tenantId: string) {
   void queryClient.invalidateQueries({ queryKey: queryKeys.activities.all(tenantId) });
 }
 
+/** Owner or a branch manager: move units of regular products into promo stock (RPC convert_to_promo). */
+export function useConvertToPromo() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: PlannedRpcs["convert_to_promo"]) =>
+      (await callRpc("convert_to_promo", args)) as { product_id: string; promo_product_id: string; quantity: number }[],
+    onSuccess: () => {
+      invalidateStock(queryClient, user?.tenantId ?? "");
+      // A product's first conversion adds its promo twin to the catalogue.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.products.all(user?.tenantId ?? "") });
+    },
+  });
+}
+
 /**
  * Storekeeper stock addition (RPC add_stock). Creates a pending approval request;
  * an emergency addition is also applied immediately.

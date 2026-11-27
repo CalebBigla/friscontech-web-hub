@@ -87,9 +87,15 @@ export type AccessScope = {
   canSetCreditLimit: boolean;
   /** cost price and anything worked out from it, such as promo items at cost (owner only) */
   canSeeCost: boolean;
+  /** set new prices on customer orders: Owner any branch, manager own branch */
+  canChangeOrderPrices: boolean;
+  /** move regular stock into promo stock: Owner any branch, manager own branch */
+  canConvertToPromo: boolean;
 };
 
 const none = {
+  canChangeOrderPrices: false,
+  canConvertToPromo: false,
   canManageStock: false,
   canRaiseOrders: false,
   canFulfilOrders: false,
@@ -233,6 +239,8 @@ function baseScope(user: User | null, userId: string): Omit<AccessScope, Extra> 
         canManageTargets: true,
         canManageTeam: true,
         canViewReports: true,
+        canChangeOrderPrices: true,
+        canConvertToPromo: true,
       };
     // Managers supervise and record walk-in sales for their branch; no catalogue additions, no Branches module.
     case "manager":
@@ -248,6 +256,8 @@ function baseScope(user: User | null, userId: string): Omit<AccessScope, Extra> 
         canManageTargets: false,
         canManageTeam: true,
         canViewReports: true,
+        canChangeOrderPrices: true,
+        canConvertToPromo: true,
       };
     case "storekeeper":
       return {
@@ -265,6 +275,8 @@ function baseScope(user: User | null, userId: string): Omit<AccessScope, Extra> 
         canManageTargets: false,
         canManageTeam: false,
         canViewReports: false,
+        canChangeOrderPrices: false,
+        canConvertToPromo: false,
       };
     // Reads nothing directly; asks the Owner for each report (report_requests).
     case "supervisor":

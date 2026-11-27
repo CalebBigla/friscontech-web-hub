@@ -37,7 +37,8 @@ import {
   getTargetForRange,
   percentChange,
 } from "@/lib/calculations";
-import { getPeriodRange, isoWeek, monthOf, previousRange, type PeriodKey } from "@/lib/dates";
+import { isoWeek, monthOf, previousRange } from "@/lib/dates";
+import { PeriodFilter, usePeriodFilter } from "@/components/period-filter";
 import { formatCompactNaira, formatDate, formatNaira, formatNumber, formatPercent, formatTime } from "@/lib/format";
 import { getManagerRemittances } from "@/lib/remittance-calculations";
 import { canReviewApproval } from "@/lib/approvals";
@@ -48,13 +49,6 @@ import type { Target as SalesTarget } from "@/data/mock-db";
 import { usePendingOnboardings } from "@/hooks/use-onboardings";
 import { fullName } from "@/lib/onboarding";
 
-type Period = "Day" | "Week" | "Month" | "Quarter";
-const periodKey: Record<Period, PeriodKey> = {
-  Day: "today",
-  Week: "week",
-  Month: "month",
-  Quarter: "quarter",
-};
 const metricIcons = [CircleDollarSign, Users, Target] as const;
 
 /** Waits for Supabase data (real loading and error states), then renders the screen. */
@@ -74,9 +68,9 @@ function OwnerDashboardContent() {
   const userId = useCurrentUserId();
   const scope = getAccessScope(db, userId);
   const ordersQuery = useCustomerOrders();
-  const [period, setPeriod] = useState<Period>("Week");
-
   const today = db.tenant.referenceDate;
+  // Day (default), week, month or chosen dates: revenue, targets and orders follow it.
+  const { state: period, setState: setPeriod, range, label: rangeLabel } = usePeriodFilter(today, "today");
   const pendingRemittances = getManagerRemittances(db, scope, { status: "submitted" });
   const pendingApprovals = getApprovals(db, scope).filter(
     (item) => item.status === "pending" && canReviewApproval(db, userId, item),
@@ -92,7 +86,6 @@ function OwnerDashboardContent() {
   const data = useMemo(() => {
     const active = db.branches.filter((b) => b.status === "active");
     const activeIds = active.map((b) => b.id);
-    const range = getPeriodRange(periodKey[period], today);
     const revenue = getSalesRevenue(db, { range });
     const prevRevenue = getSalesRevenue(db, { range: previousRange(range) });
     const target = getTargetForRange(db, range, {});
@@ -135,13 +128,16 @@ function OwnerDashboardContent() {
       inventorySummary,
       dead: getDeadStockValue(db, activeIds),
     };
-  }, [db, period, today]);
+  }, [db, range.from, range.to]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tenantBranchIds = db.branches
     .filter((branch) => branch.tenantId === scope.user.tenantId)
     .map((branch) => branch.id);
   const visibleBranches = scope.branchIds ?? tenantBranchIds;
-  const orders = (ordersQuery.data ?? []).filter((order) => visibleBranches.includes(order.branchId));
+  const orders = (ordersQuery.data ?? []).filter((order) => {
+    const day = order.createdAt.slice(0, 10);
+    return visibleBranches.includes(order.branchId) && day >= range.from && day <= range.to;
+  });
   const pending = orders.filter((order) => order.status === "pending").length;
   const toAcknowledge = orders.filter((order) => order.status === "fulfilled").length;
   const nameOf = (id: string) => db.branches.find((b) => b.id === id)?.name ?? "—";
@@ -179,18 +175,7 @@ function OwnerDashboardContent() {
             Updated today at {db.tenant.lastSyncTime} AM · Fiscal week W{isoWeek(today)}
           </p>
         </div>
-        <div className="grid grid-cols-4 rounded-md border border-border bg-card p-1">
-          {(["Day", "Week", "Month", "Quarter"] as Period[]).map((item) => (
-            <Button
-              key={item}
-              size="sm"
-              variant={period === item ? "default" : "ghost"}
-              onClick={() => setPeriod(item)}
-            >
-              {item}
-            </Button>
-          ))}
-        </div>
+        <PeriodFilter today={today} value={period} onChange={setPeriod} />
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -210,7 +195,7 @@ function OwnerDashboardContent() {
                 <span className={`status status-${metric.tone}`}>{metric.change}</span>
               </div>
               <p className="mt-5 text-xs text-muted-foreground">
-                {metric.label} · {period}
+                {metric.label} · {rangeLabel}
               </p>
               <p className="mt-1 text-2xl font-bold">{metric.value}</p>
               <p className="mt-2 text-[11px] text-muted-foreground">{metric.detail}</p>
@@ -319,7 +304,7 @@ function OwnerDashboardContent() {
       <section className="mt-4 grid gap-4 xl:grid-cols-2">
         <Panel
           title="Customer orders"
-          subtitle={`${pending} waiting for fulfilment · ${toAcknowledge} for reps to acknowledge`}
+          subtitle={`Raised ${rangeLabel} · ${pending} waiting for fulfilment · ${toAcknowledge} for reps to acknowledge`}
           action={
             <Button variant="ghost" size="sm" asChild>
               <Link to="/orders">View all</Link>
@@ -351,7 +336,7 @@ function OwnerDashboardContent() {
               })}
             </div>
           ) : (
-            <EmptyState title="No customer orders yet." />
+            <EmptyState title="No customer orders in this period." detail="Choose a wider period to see earlier orders." />
           )}
         </Panel>
         <article className="rounded-lg border border-border bg-card p-5 shadow-panel">
