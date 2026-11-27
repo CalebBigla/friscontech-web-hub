@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Download, Loader2, Plus } from "lucide-react";
+import { AlertTriangle, Download, Eye, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { CustomerFormDialog } from "@/components/customers/customer-dialogs";
-import { DataGate, EmptyState, FilterSelect, Panel, SearchBox, StatTile } from "@/components/shared";
+import { DataGate, FilterSelect, StatTile } from "@/components/shared";
+import { FilterBar } from "@/components/kit/filter-bar";
+import { Pagination, Table, TableCard, TableEmpty, Td, TdActions, Th, THead, Tr } from "@/components/kit/data-table";
+import { RowActions } from "@/components/kit/row-actions";
+import { StatusBadge } from "@/components/kit/status-badge";
+import { usePagination } from "@/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { balancePosition, getCustomerSummary, getCustomersForScope, needsReassignment } from "@/lib/customer-calculations";
 import { formatNaira, formatNumber } from "@/lib/format";
@@ -15,17 +20,9 @@ import { useLiveWorkspace } from "@/hooks/use-live-workspace";
 
 export function BalanceBadge({ balance }: { balance: number }) {
   const position = balancePosition(balance);
-  if (position === "debt")
-    return (
-      <span className="status status-danger whitespace-nowrap">Debt {formatNaira(-balance)}</span>
-    );
-  if (position === "credit")
-    return (
-      <span className="status status-success whitespace-nowrap">
-        In credit {formatNaira(balance)}
-      </span>
-    );
-  return <span className="status status-brand whitespace-nowrap">Settled</span>;
+  if (position === "debt") return <StatusBadge tone="danger">Debt</StatusBadge>;
+  if (position === "credit") return <StatusBadge tone="success">In credit</StatusBadge>;
+  return <StatusBadge tone="neutral">Settled</StatusBadge>;
 }
 
 export function CustomersPage() {
@@ -120,228 +117,162 @@ export function CustomersPage() {
   const branchName = (id: string | null) =>
     id ? (db.branches.find((b) => b.id === id)?.name ?? "—") : "All branches";
 
+  const filtering = q.trim() !== "" || status !== "active" || balance !== "all" || branchId !== "all" || repFilter !== "all";
+  const clearFilters = () => {
+    setQ("");
+    setStatus("active");
+    setBalance("all");
+    setBranchId("all");
+    setRepFilter("all");
+  };
+  const paging = usePagination(rows, 25);
+  const open = (id: string) => void navigate({ to: "/customers/$customerId", params: { customerId: id } });
+  const columns = 6 + (isOwner ? 1 : 0);
+
   return (
-    <AppShell title="Customers" subtitle="Registered customers who buy on account">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Customers</h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Walk-in buyers are sold to directly in Sales and have no account.
-          </p>
-        </div>
-        <div className="flex gap-2">
+    <AppShell
+      title="Customers"
+      subtitle="Customers who buy on account."
+      actions={
+        <>
           {canDownload && (
-            <Button size="sm" variant="secondary" disabled={exporting || !rows.length} onClick={() => void downloadExcel()}>
-              {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-              Download Excel
+            <Button variant="secondary" disabled={exporting || !rows.length} onClick={() => void downloadExcel()}>
+              {exporting ? <Loader2 className="animate-spin" /> : <Download />}
+              <span className="hidden sm:inline">Export</span>
             </Button>
           )}
           {scope.canManageCustomers && (
-            <Button size="sm" onClick={() => setAddOpen(true)}>
-              <Plus className="size-4" />
-              Add customer
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus />Add customer
             </Button>
           )}
-        </div>
-      </div>
+        </>
+      }
+    >
       <DataGate isLoading={isLoading} error={error}>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile
-          label="Customers"
-          value={String(all.filter((r) => r.customer.status === "active").length)}
-          detail={`${all.length} registered`}
-        />
-        <StatTile
-          tone="danger"
-          label="Total debt"
-          value={formatNaira(totalOwed)}
-          detail={`${owing} customer${owing === 1 ? "" : "s"} in debt`}
-        />
-        <StatTile
-          tone="warning"
-          label="Payments awaiting confirmation"
-          value={formatNaira(pending)}
-          detail="Not yet credited"
-        />
-        <StatTile
-          tone="success"
-          label="Confirmed payments"
-          value={formatNaira(all.reduce((s, r) => s + r.summary.credits, 0))}
-        />
+        <StatTile label="Active customers" value={formatNumber(all.filter((r) => r.customer.status === "active").length)} detail={`${formatNumber(all.length)} registered`} />
+        <StatTile tone="danger" label="Total debt" value={formatNaira(totalOwed)} detail={`${owing} customer${owing === 1 ? "" : "s"}`} />
+        <StatTile tone="warning" label="Awaiting confirmation" value={formatNaira(pending)} />
+        <StatTile tone="success" label="Paid" value={formatNaira(all.reduce((sum, r) => sum + r.summary.credits, 0))} />
       </div>
-      {isOwner && unmanagedCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setRepFilter("unmanaged")}
-          className="mt-4 block w-full rounded-md bg-warning-soft p-3 text-left text-xs text-warning"
+
+      {isOwner && unmanagedCount > 0 && repFilter !== "unmanaged" && (
+        <div role="status" className="alert alert-warning mt-4 flex items-center gap-3">
+          <AlertTriangle className="size-4 shrink-0" />
+          <p className="flex-1 text-label">
+            {unmanagedCount} customer{unmanagedCount === 1 ? " has" : "s have"} no active sales rep.
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => setRepFilter("unmanaged")}>Show</Button>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <FilterBar
+          search={{ value: q, onChange: setQ, placeholder: "Search name, phone, email" }}
+          active={filtering}
+          onClear={clearFilters}
         >
-          {unmanagedCount} customer{unmanagedCount === 1 ? " has" : "s have"} no active sales rep.
-          Open each one to reassign it.
-        </button>
-      )}
-      {repTotals && (
-        <section aria-label={`Totals for ${repName(repFilter)}`} className="mt-4 rounded-xl border border-border bg-card p-4 shadow-panel">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-sm font-semibold">Totals for {repName(repFilter)}</p>
-            <p className="text-xs text-muted-foreground">
-              {repTotals.customers} customer{repTotals.customers === 1 ? "" : "s"} shown
-            </p>
-          </div>
-          <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-            {[
-              ["Customers", formatNumber(repTotals.customers), "text-foreground"],
-              ["Total sold", formatNaira(repTotals.sold), "text-foreground"],
-              ["Total paid", formatNaira(repTotals.paid), "text-success"],
-              ["Customer debt", formatNaira(repTotals.owed), repTotals.owed > 0 ? "text-destructive" : "text-foreground"],
-              ["Awaiting confirmation", formatNaira(repTotals.pending), "text-warning"],
-            ].map(([label, value, tone]) => (
-              <div key={label} className="rounded-lg bg-muted/50 p-3">
-                <dt className="text-caption text-muted-foreground">{label}</dt>
-                <dd className={`mt-1 text-base font-bold tabular-nums ${tone}`}>{value}</dd>
-              </div>
-            ))}
-          </dl>
-          {repTotals.inCredit > 0 && (
-            <p className="mt-2 text-caption text-muted-foreground">Customers in credit hold {formatNaira(repTotals.inCredit)} more than their debt.</p>
+          {scope.branchIds === null && (
+            <FilterSelect label="Branch" value={branchId} onChange={setBranchId} className="w-full sm:w-40"
+              options={[{ value: "all", label: "All branches" }, ...branches.map((b) => ({ value: b.id, label: b.name }))]} />
           )}
-        </section>
-      )}
-      <Panel
-        title="Customer accounts"
-        className="mt-4"
-        action={
-          <div className="flex flex-wrap gap-2">
-            <SearchBox value={q} onChange={setQ} placeholder="Search name, phone, email" />
-            {scope.branchIds === null && (
-              <FilterSelect
-                label="Branch"
-                value={branchId}
-                onChange={setBranchId}
-                className="w-36"
-                options={[
-                  { value: "all", label: "All branches" },
-                  ...branches.map((b) => ({ value: b.id, label: b.name })),
-                ]}
-              />
-            )}
-            {(isOwner || scope.user.role === "manager") && (
-              <FilterSelect
-                label="Sales rep"
-                value={repFilter}
-                onChange={setRepFilter}
-                className="w-44"
-                options={[
-                  { value: "all", label: "All sales reps" },
-                  { value: "unmanaged", label: "Needs reassignment" },
-                  ...db.users
-                    .filter(
-                      (u) =>
-                        u.role === "sales_rep" &&
-                        u.status === "active" &&
-                        (scope.branchIds === null || (!!u.branchId && scope.branchIds.includes(u.branchId))),
-                    )
-                    .map((u) => ({ value: u.id, label: u.name })),
-                ]}
-              />
-            )}
-            <FilterSelect
-              label="Balance"
-              value={balance}
-              onChange={setBalance}
-              className="w-32"
+          {(isOwner || scope.user.role === "manager") && (
+            <FilterSelect label="Sales rep" value={repFilter} onChange={setRepFilter} className="w-full sm:w-44"
               options={[
-                { value: "all", label: "Any balance" },
-                { value: "debt", label: "Debt" },
-                { value: "credit", label: "In credit" },
-                { value: "settled", label: "Settled" },
-              ]}
-            />
-            <FilterSelect
-              label="Status"
-              value={status}
-              onChange={setStatus}
-              className="w-28"
-              options={[
-                { value: "active", label: "Active" },
-                { value: "inactive", label: "Inactive" },
-                { value: "all", label: "All" },
-              ]}
-            />
-          </div>
-        }
-      >
-        {rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-caption uppercase text-muted-foreground">
-                <tr>
-                  {["Customer", "Phone", "Branch", ...(isOwner ? ["Sales rep"] : []), "Orders", "Balance", ""].map((h) => (
-                    <th key={h} className="px-4 py-3 font-semibold">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map(({ customer: c, summary: s, unmanaged }) => (
-                  <tr
-                    key={c.id}
-                    className="cursor-pointer hover:bg-muted/40"
-                    tabIndex={0}
-                    onClick={() =>
-                      navigate({ to: "/customers/$customerId", params: { customerId: c.id } })
-                    }
-                    onKeyDown={(e) =>
-                      e.key === "Enter" &&
-                      navigate({ to: "/customers/$customerId", params: { customerId: c.id } })
-                    }
-                  >
-                    <td className="px-4 py-3">
-                      <p className="font-semibold">{c.name}</p>
-                      <p className="text-caption text-muted-foreground">
-                        {c.contactPerson || c.email || "—"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">{c.phone}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{branchName(c.branchId)}</td>
-                    {isOwner && (
-                      <td className="px-4 py-3">
-                        {unmanaged ? (
-                          <span className="status status-warning whitespace-nowrap">Needs reassignment</span>
-                        ) : (
-                          repName(c.assignedRepId)
-                        )}
-                      </td>
-                    )}
-                    <td className="px-4 py-3">{s.orders}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`font-bold tabular-nums ${balancePosition(s.balance) === "debt" ? "text-destructive" : ""}`}
-                      >
-                        {formatNaira(s.balance)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {c.status === "inactive" ? (
-                        <span className="status status-warning">Inactive</span>
-                      ) : (
-                        <BalanceBadge balance={s.balance} />
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState
-            title={all.length ? "No customers match these filters." : "No customers yet."}
-            {...(scope.canManageCustomers
-              ? { detail: "Add a customer to start selling on account." }
-              : {})}
-          />
+                { value: "all", label: "All sales reps" },
+                { value: "unmanaged", label: "Needs reassignment" },
+                ...db.users
+                  .filter((u) => u.role === "sales_rep" && u.status === "active"
+                    && (scope.branchIds === null || (!!u.branchId && scope.branchIds.includes(u.branchId))))
+                  .map((u) => ({ value: u.id, label: u.name })),
+              ]} />
+          )}
+          <FilterSelect label="Balance" value={balance} onChange={setBalance} className="w-full sm:w-36"
+            options={[
+              { value: "all", label: "Any balance" },
+              { value: "debt", label: "Debt" },
+              { value: "credit", label: "In credit" },
+              { value: "settled", label: "Settled" },
+            ]} />
+          <FilterSelect label="Status" value={status} onChange={setStatus} className="w-full sm:w-32"
+            options={[
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+              { value: "all", label: "All statuses" },
+            ]} />
+        </FilterBar>
+
+        {repTotals && (
+          <section aria-label={`Totals for ${repName(repFilter)}`} className="mb-4 rounded-xl border border-border bg-card shadow-panel">
+            <p className="border-b border-border px-5 py-3 text-section">{repName(repFilter)} · {repTotals.customers} customer{repTotals.customers === 1 ? "" : "s"}</p>
+            <dl className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+              {[
+                ["Sold", formatNaira(repTotals.sold), ""],
+                ["Paid", formatNaira(repTotals.paid), "text-success"],
+                ["Debt", formatNaira(repTotals.owed), repTotals.owed > 0 ? "text-destructive" : ""],
+                ["Awaiting confirmation", formatNaira(repTotals.pending), "text-warning"],
+              ].map(([label, value, tone]) => (
+                <div key={label} className="bg-card px-5 py-3.5">
+                  <dt className="text-caption text-muted-foreground">{label}</dt>
+                  <dd className={`mt-1 text-lg font-semibold tabular-nums ${tone}`}>{value}</dd>
+                </div>
+              ))}
+            </dl>
+            {repTotals.inCredit > 0 && (
+              <p className="border-t border-border px-5 py-2.5 text-caption text-muted-foreground">In credit: {formatNaira(repTotals.inCredit)}</p>
+            )}
+          </section>
         )}
-      </Panel>
+
+        <TableCard footer={<Pagination page={paging.page} pageCount={paging.pageCount} pageSize={paging.pageSize} total={paging.total} onPage={paging.setPage} />}>
+          <Table minWidth={720}>
+            <THead>
+              <tr>
+                <Th>Customer</Th>
+                <Th>Phone</Th>
+                <Th>Branch</Th>
+                {isOwner && <Th>Sales rep</Th>}
+                <Th align="right">Orders</Th>
+                <Th align="right">Balance</Th>
+                <Th>Status</Th>
+                <Th srOnly>Actions</Th>
+              </tr>
+            </THead>
+            <tbody>
+              {paging.pageItems.map(({ customer: c, summary: s, unmanaged }) => (
+                <Tr key={c.id} onClick={() => open(c.id)}>
+                  <Td>
+                    <p className="font-medium">{c.name}</p>
+                    <p className="text-caption text-muted-foreground">{c.contactPerson || c.email || "—"}</p>
+                  </Td>
+                  <Td className="whitespace-nowrap">{c.phone}</Td>
+                  <Td muted>{branchName(c.branchId)}</Td>
+                  {isOwner && (
+                    <Td>{unmanaged ? <StatusBadge tone="warning">Needs reassignment</StatusBadge> : repName(c.assignedRepId)}</Td>
+                  )}
+                  <Td numeric>{formatNumber(s.orders)}</Td>
+                  <Td numeric className={`font-semibold ${balancePosition(s.balance) === "debt" ? "text-destructive" : ""}`}>{formatNaira(s.balance)}</Td>
+                  <Td>{c.status === "inactive" ? <StatusBadge tone="neutral">Inactive</StatusBadge> : <BalanceBadge balance={s.balance} />}</Td>
+                  <TdActions>
+                    <RowActions label={`Actions for ${c.name}`} actions={[{ label: "View details", icon: Eye, onSelect: () => open(c.id) }]} />
+                  </TdActions>
+                </Tr>
+              ))}
+              {rows.length === 0 && (
+                <TableEmpty
+                  colSpan={columns + 1}
+                  title={all.length ? "No customers match" : "No customers yet"}
+                  detail={all.length ? "Try other filters." : scope.canManageCustomers ? "Add a customer to sell on account." : undefined}
+                  action={all.length
+                    ? (filtering ? <Button variant="secondary" size="sm" onClick={clearFilters}>Clear filters</Button> : undefined)
+                    : scope.canManageCustomers ? <Button size="sm" onClick={() => setAddOpen(true)}><Plus />Add customer</Button> : undefined}
+                />
+              )}
+            </tbody>
+          </Table>
+        </TableCard>
+      </div>
       </DataGate>
       {scope.canManageCustomers && (
         <CustomerFormDialog

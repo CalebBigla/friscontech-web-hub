@@ -1,12 +1,19 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Ban, CheckCheck, ClipboardList, Loader2, PackageCheck, Plus, Tag, X } from "lucide-react";
+import { ConfirmDialog } from "@/components/kit/confirm-dialog";
+import { FilterBar } from "@/components/kit/filter-bar";
+import { Modal } from "@/components/kit/overlays";
+import { Pagination } from "@/components/kit/data-table";
+import { RowActions } from "@/components/kit/row-actions";
+import { FormField } from "@/components/kit/form-field";
+import { usePagination } from "@/hooks/use-pagination";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { PlaceOrderDialog } from "@/components/orders/place-order-dialog";
 import { PeriodFilter, usePeriodFilter } from "@/components/period-filter";
-import { DataGate, EmptyState, FieldError, FilterSelect, Panel, SearchBox, StatTile } from "@/components/shared";
+import { DataGate, EmptyState, FieldError, FilterSelect, Panel, StatTile } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Db } from "@/data/mock-db";
@@ -68,69 +75,72 @@ export function OrdersPage({ initialStatus }: { initialStatus?: OrderStatus | un
   });
   const count = (s: OrderStatus) => filtered.filter((o) => o.status === s).length;
   const list = filtered.filter((o) => status === ALL || o.status === status);
-  const filtering = rep !== ALL || productId !== ALL || !!needle;
+  const filtering = rep !== ALL || productId !== ALL || !!needle || status !== ALL || period.period !== "today";
+  const clearFilters = () => {
+    setRep(ALL);
+    setProductId(ALL);
+    setStatus(ALL);
+    setQuery("");
+    setPeriod({ period: "today" });
+  };
   // The work for this role comes first: storekeepers the pending ones, reps those to acknowledge.
   const urgent = (o: CustomerOrderRecord) =>
     (role === "storekeeper" && o.status === "pending") || (role === "sales_rep" && o.status === "fulfilled") ? 0 : 1;
   const sorted = [...list].sort((a, b) => urgent(a) - urgent(b) || (urgent(a) === 0 ? a.createdAt.localeCompare(b.createdAt) : b.createdAt.localeCompare(a.createdAt)));
+  const paging = usePagination(sorted, 20);
 
   return (
     <AppShell
       title="Orders"
-      subtitle="Customer orders and their fulfilment"
-      actions={scope.canRaiseOrders ? <Button onClick={() => setCreating(true)}><Plus className="size-4" /><span className="hidden sm:inline">New order</span></Button> : undefined}
+      subtitle={role === "sales_rep" ? "Raise orders for your customers and confirm delivery."
+        : role === "storekeeper" ? "Fulfil orders from your branch's sales reps."
+          : "Customer orders from raised to delivered."}
+      actions={scope.canRaiseOrders ? <Button onClick={() => setCreating(true)}><Plus />New order</Button> : undefined}
     >
-      <div className="mb-5">
-        <h1 className="text-xl font-bold">Orders</h1>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {role === "sales_rep" ? "Raise an order for your customer; the storekeeper fulfils it, then you acknowledge you have the goods."
-            : role === "storekeeper" ? "Orders raised by your branch's sales reps. Fulfil an order to release its items: the stock is already held for it."
-              : "Customer orders across your branches, from raised to acknowledged."}
-        </p>
-      </div>
+      <FilterBar
+        search={{ value: query, onChange: setQuery, placeholder: "Search orders" }}
+        active={filtering}
+        onClear={clearFilters}
+      >
+        <PeriodFilter today={today} value={period} onChange={setPeriod} />
+        {role !== "sales_rep" && (
+          <FilterSelect label="Sales rep" className="w-full sm:w-44" value={rep} onChange={setRep}
+            options={[{ value: ALL, label: "All sales reps" }, ...reps]} />
+        )}
+        <FilterSelect label="Product" className="w-full sm:w-44" value={productId} onChange={setProductId}
+          options={[{ value: ALL, label: "All products" }, ...products]} />
+        <FilterSelect label="Status" className="w-full sm:w-44" value={status} onChange={setStatus} options={[
+          { value: ALL, label: "All statuses" },
+          { value: "pending", label: orderStatusView.pending.label },
+          { value: "fulfilled", label: orderStatusView.fulfilled.label },
+          { value: "acknowledged", label: orderStatusView.acknowledged.label },
+          { value: "cancelled", label: orderStatusView.cancelled.label },
+          { value: "voided", label: orderStatusView.voided.label },
+        ]} />
+      </FilterBar>
       <DataGate isLoading={isLoading || loadingOrders} error={error ?? ordersError}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Waiting for fulfilment" value={formatNumber(count("pending"))} tone="warning" />
-          <StatTile label="Fulfilled, to acknowledge" value={formatNumber(count("fulfilled"))} />
+          <StatTile label="To fulfil" value={formatNumber(count("pending"))} tone="warning" />
+          <StatTile label="To acknowledge" value={formatNumber(count("fulfilled"))} tone="violet" />
           <StatTile label="Completed" value={formatNumber(count("acknowledged"))} tone="success" />
-          <StatTile label="Cancelled or voided" value={formatNumber(count("cancelled") + count("voided"))} />
+          <StatTile label="Cancelled or voided" value={formatNumber(count("cancelled") + count("voided"))} tone="danger" />
         </div>
         <Panel
           className="mt-4 overflow-hidden"
-          title="Orders"
-          subtitle={`Raised ${rangeLabel} · ${formatNumber(list.length)} shown · ${formatNaira(list.reduce((sum, o) => sum + orderTotal(o), 0))}`}
-          action={
-            <div className="flex flex-col gap-2 lg:items-end">
-              <div className="flex flex-wrap gap-2">
-                <PeriodFilter today={today} value={period} onChange={setPeriod} />
-                <SearchBox value={query} onChange={setQuery} placeholder="Search order, customer, product" className="w-full sm:w-60" />
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-                {role !== "sales_rep" && (
-                  <FilterSelect label="Sales rep" className="w-full sm:w-44" value={rep} onChange={setRep}
-                    options={[{ value: ALL, label: "All sales reps" }, ...reps]} />
-                )}
-                <FilterSelect label="Product" className="w-full sm:w-48" value={productId} onChange={setProductId}
-                  options={[{ value: ALL, label: "All products" }, ...products]} />
-                <FilterSelect label="Status" className="w-full sm:w-48" value={status} onChange={setStatus} options={[
-                  { value: ALL, label: "All statuses" },
-                  { value: "pending", label: orderStatusView.pending.label },
-                  { value: "fulfilled", label: orderStatusView.fulfilled.label },
-                  { value: "acknowledged", label: orderStatusView.acknowledged.label },
-                  { value: "cancelled", label: orderStatusView.cancelled.label },
-                  { value: "voided", label: orderStatusView.voided.label },
-                ]} />
-              </div>
-            </div>
-          }
+          title={`${formatNumber(list.length)} order${list.length === 1 ? "" : "s"}`}
+          subtitle={`${rangeLabel} · ${formatNaira(list.reduce((sum, o) => sum + orderTotal(o), 0))}`}
         >
           {sorted.length ? (
-            <ul className="divide-y divide-border">{sorted.map((o) => <OrderRow key={o.id} o={o} db={db} scope={scope} />)}</ul>
+            <>
+              <ul className="divide-y divide-border">{paging.pageItems.map((o) => <OrderRow key={o.id} o={o} db={db} scope={scope} />)}</ul>
+              <Pagination page={paging.page} pageCount={paging.pageCount} pageSize={paging.pageSize} total={paging.total} onPage={paging.setPage} />
+            </>
           ) : (
-            <EmptyState icon={ClipboardList} title={orders.length ? "No orders match" : "No orders"}
-              detail={orders.length
-                ? `Nothing raised ${rangeLabel}${filtering || status !== ALL ? " with these filters" : ""}. Try a wider period or clear the filters.`
-                : scope.canRaiseOrders ? "Open a customer and raise an order from their order book." : "Orders raised by sales reps appear here."} />
+            <EmptyState icon={ClipboardList} title={orders.length ? "No orders match" : "No orders yet"}
+              detail={orders.length ? "Try a wider period or clear the filters." : scope.canRaiseOrders ? "Raise an order for one of your customers." : "Orders from sales reps appear here."}
+              action={orders.length && filtering
+                ? <Button variant="secondary" size="sm" onClick={clearFilters}>Clear filters</Button>
+                : scope.canRaiseOrders ? <Button size="sm" onClick={() => setCreating(true)}><Plus />New order</Button> : undefined} />
           )}
         </Panel>
       </DataGate>
@@ -151,8 +161,7 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
   const voidOrder = useVoidOrder();
   const changePrices = useChangeOrderPrices();
   // "cancel" before fulfilment; "void" (Owner) after it.
-  const [cancelling, setCancelling] = useState<false | "cancel" | "void">(false);
-  const [reason, setReason] = useState("");
+  const [confirming, setConfirming] = useState<false | "cancel" | "void">(false);
   const [error, setError] = useState("");
   const today = db.tenant.referenceDate;
   const product = (id: string) => db.products.find((p) => p.id === id)?.name ?? "Product";
@@ -169,12 +178,14 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
     && (o.status === "pending" || o.status === "fulfilled" || o.status === "acknowledged") && priceable.length > 0;
   const [pricing, setPricing] = useState(false);
   const [prices, setPrices] = useState<Record<string, string>>({});
+  const [reason, setReason] = useState("");
+  const [priceError, setPriceError] = useState("");
   const busy = fulfil.isPending || acknowledge.isPending || cancel.isPending || voidOrder.isPending || changePrices.isPending;
 
   function openPricing() {
     setPrices(Object.fromEntries(priceable.map((l) => [l.saleId, String(Math.round(priceEach(l) * 100) / 100)])));
     setReason("");
-    setError("");
+    setPriceError("");
     setPricing(true);
   }
   const newPrice = (l: OrderLine) => Number(prices[l.saleId]);
@@ -188,23 +199,23 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
     for (const l of priceable) {
       const p = newPrice(l);
       const list = l.listPrice ?? l.unitPrice;
-      if (!Number.isFinite(p) || p <= 0) return setError(`Enter a price above zero for ${product(l.productId)}`);
-      if (p > list + 0.004) return setError(`${product(l.productId)} can't go above its list price of ${formatNaira(list)}`);
+      if (!Number.isFinite(p) || p <= 0) return setPriceError(`Enter a price above zero for ${product(l.productId)}`);
+      if (p > list + 0.004) return setPriceError(`${product(l.productId)} can't go above its list price of ${formatNaira(list)}`);
     }
-    if (!changed.length) return setError("Change at least one price");
-    if (!reason.trim()) return setError("Say why the price is changing");
-    setError("");
+    if (!changed.length) return setPriceError("Change at least one price");
+    if (!reason.trim()) return setPriceError("Say why the price is changing");
+    setPriceError("");
     try {
       await changePrices.mutateAsync({
         p_order_id: o.id,
         p_lines: changed.map((l) => ({ sale_id: l.saleId, unit_price: Math.round(newPrice(l) * 100) / 100 })),
         p_reason: reason.trim(),
       });
-      toast.success(`Prices updated on ${o.code}`, { description: `New total ${formatNaira(pricingTotal)}. ${person(o.repId)} sees the new prices.` });
+      toast.success(`Prices updated on ${o.code}`, { description: `New total ${formatNaira(pricingTotal)}` });
       setPricing(false);
     } catch (failure) {
       const errors = fieldErrorsFrom(failure, ["reason", "lines"] as const);
-      setError(errors.lines ?? errors.reason ?? errors.form ?? "Could not change the prices");
+      setPriceError(errors.lines ?? errors.reason ?? errors.form ?? "Could not change the prices");
     }
   }
 
@@ -213,96 +224,126 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
     try {
       await fn();
       toast.success(label);
-      setCancelling(false);
     } catch (failure) {
       const errors = fieldErrorsFrom(failure, ["reason"] as const);
       setError(errors.reason ?? errors.form ?? "Could not update the order");
     }
   }
 
+  const history = [
+    o.fulfilledAt && `Fulfilled by ${person(o.fulfilledBy)} · ${formatDayTime(o.fulfilledAt, today)}`,
+    o.acknowledgedAt && `Acknowledged by ${person(o.acknowledgedBy)} · ${formatDayTime(o.acknowledgedAt, today)}`,
+  ].filter(Boolean) as string[];
+
   return (
     <li className="px-5 py-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs font-bold">{o.code}</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Link to="/customers/$customerId" params={{ customerId: o.customerId }} className="text-body font-medium hover:text-primary">{o.customerName}</Link>
+            <span className="font-mono text-caption text-muted-foreground">{o.code}</span>
             <OrderStatusBadge status={o.status} />
           </div>
-          <p className="text-sm font-semibold">
-            <Link to="/customers/$customerId" params={{ customerId: o.customerId }} className="hover:text-primary">{o.customerName}</Link>
-          </p>
-          <ul className="space-y-0.5 text-xs">
+          <ul className="space-y-0.5 text-label">
             {lines.map((l) => {
               const left = getAvailableStock(db, l.productId, o.branchId);
               return (
-                <li key={l.saleId}>
-                  <strong>{formatNumber(l.quantity)} × {product(l.productId)}</strong>
-                  {l.isPromo ? <span className="text-muted-foreground"> (promo · free)</span> : (
-                    <span className="text-muted-foreground"> · {formatNaira(priceEach(l))} each
+                <li key={l.saleId} className="text-muted-foreground">
+                  <span className="text-foreground">{formatNumber(l.quantity)} × {product(l.productId)}</span>
+                  {l.isPromo ? " · free (promo)" : (
+                    <>
+                      {" · "}{formatNaira(priceEach(l))} each
                       {/* Only the Owner and managers receive the list price. */}
                       {l.listPrice !== null && Math.abs(l.listPrice - priceEach(l)) >= 0.005 && (
                         <> <span className="line-through">{formatNaira(l.listPrice)}</span></>
                       )}
-                    </span>
+                    </>
                   )}
-                  {isStorekeeper && o.status === "pending" && (
-                    <span className="text-muted-foreground"> · held for this order ({formatNumber(left)} more available)</span>
-                  )}
+                  {isStorekeeper && o.status === "pending" && <> · held ({formatNumber(left)} more available)</>}
                 </li>
               );
             })}
           </ul>
           <p className="text-caption text-muted-foreground">
-            Raised by {person(o.repId)} · {formatDayTime(o.createdAt, today)} · {formatNaira(orderTotal(o))}
+            {person(o.repId)} · {formatDayTime(o.createdAt, today)}
+            {history.length > 0 && <> · {history.join(" · ")}</>}
           </p>
-          {o.note && <p className="text-caption text-muted-foreground">“{o.note}”</p>}
-          {o.fulfilledAt && <p className="text-caption text-muted-foreground">Fulfilled by {person(o.fulfilledBy)} · {formatDayTime(o.fulfilledAt, today)}</p>}
-          {o.acknowledgedAt && <p className="text-caption text-muted-foreground">Acknowledged by {person(o.acknowledgedBy)} · {formatDayTime(o.acknowledgedAt, today)}</p>}
+          {o.note && <p className="text-caption text-muted-foreground">Note: {o.note}</p>}
           {o.cancelledAt && <p className="text-caption text-destructive">{o.status === "voided" ? "Voided" : "Cancelled"} by {person(o.cancelledBy)} · {formatDayTime(o.cancelledAt, today)}{o.cancelReason ? ` · ${o.cancelReason}` : ""}</p>}
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          {canChangePrices && !cancelling && !pricing && (
-            <Button size="sm" variant="secondary" disabled={busy} onClick={openPricing}><Tag className="size-3.5" />Change prices</Button>
-          )}
-          {canCancel && !cancelling && !pricing && (
-            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setCancelling("cancel")}><X className="size-3.5" />Cancel order</Button>
-          )}
-          {canVoid && !cancelling && !pricing && (
-            <Button size="sm" variant="secondary" className="text-destructive" disabled={busy} onClick={() => setCancelling("void")}><Ban className="size-3.5" />Void order</Button>
-          )}
-          {isStorekeeper && o.status === "pending" && !cancelling && (
-            <Button size="sm" disabled={busy} onClick={() => void run(`${o.code} fulfilled`, () => fulfil.mutateAsync({ p_order_id: o.id }))}>
-              {fulfil.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PackageCheck className="size-3.5" />}Fulfil order
-            </Button>
-          )}
-          {isRaiser && scope.canRaiseOrders && o.status === "fulfilled" && (
-            <Button size="sm" disabled={busy} onClick={() => void run(`${o.code} acknowledged`, () => acknowledge.mutateAsync({ p_order_id: o.id }))}>
-              {acknowledge.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCheck className="size-3.5" />}Acknowledge receipt
-            </Button>
-          )}
+        <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
+          <span className="text-body font-semibold tabular-nums">{formatNaira(orderTotal(o))}</span>
+          <div className="ml-auto flex items-center gap-1.5 sm:ml-0">
+            {isStorekeeper && o.status === "pending" && (
+              <Button size="sm" disabled={busy} onClick={() => void run(`${o.code} fulfilled`, () => fulfil.mutateAsync({ p_order_id: o.id }))}>
+                {fulfil.isPending ? <Loader2 className="animate-spin" /> : <PackageCheck />}Fulfil
+              </Button>
+            )}
+            {isRaiser && scope.canRaiseOrders && o.status === "fulfilled" && (
+              <Button size="sm" disabled={busy} onClick={() => void run(`${o.code} acknowledged`, () => acknowledge.mutateAsync({ p_order_id: o.id }))}>
+                {acknowledge.isPending ? <Loader2 className="animate-spin" /> : <CheckCheck />}Acknowledge
+              </Button>
+            )}
+            <RowActions
+              label={`Actions for ${o.code}`}
+              actions={[
+                { label: "Change prices", icon: Tag, onSelect: openPricing, hidden: !canChangePrices, disabled: busy },
+                { label: "Cancel order", icon: X, onSelect: () => setConfirming("cancel"), hidden: !canCancel, danger: true, disabled: busy },
+                { label: "Void order", icon: Ban, onSelect: () => setConfirming("void"), hidden: !canVoid, danger: true, disabled: busy },
+              ]}
+            />
+          </div>
         </div>
       </div>
-      {pricing && (
-        <div className="mt-3 space-y-3 rounded-md border border-border p-3">
-          <p className="text-caption text-muted-foreground">
-            Set the new price per unit. {person(o.repId)} and the invoice show it as the price; only the Owner and managers see what it was.
-            It can't go above the list price.
-          </p>
-          <ul className="space-y-2">
+      <FieldError message={error} />
+
+      <ConfirmDialog
+        open={!!confirming}
+        onOpenChange={(open) => !open && setConfirming(false)}
+        title={confirming === "void" ? `Void ${o.code}?` : `Cancel ${o.code}?`}
+        description={confirming === "void"
+          ? `Takes ${formatNaira(orderTotal(o))} off ${o.customerName}'s account and ${person(o.repId)}'s sales, and puts the items back in stock. This can't be undone.`
+          : "The held items go back to available stock."}
+        confirmLabel={confirming === "void" ? "Void order" : "Cancel order"}
+        cancelLabel="Keep order"
+        reason={{ label: "Reason", placeholder: confirming === "void" ? "Why is the order voided?" : "Why is the order cancelled?", required: true }}
+        onConfirm={async (why) => {
+          if (confirming === "void") await voidOrder.mutateAsync({ p_order_id: o.id, p_reason: why });
+          else await cancel.mutateAsync({ p_order_id: o.id, p_reason: why });
+          toast.success(`${o.code} ${confirming === "void" ? "voided" : "cancelled"}`);
+        }}
+      />
+
+      <Modal
+        open={pricing}
+        onOpenChange={(open) => !changePrices.isPending && setPricing(open)}
+        title={`Change prices · ${o.code}`}
+        description="The rep and the invoice show the new price. Only the Owner and managers see the old one."
+        footer={
+          <>
+            <Button variant="secondary" disabled={changePrices.isPending} onClick={() => setPricing(false)}>Cancel</Button>
+            <Button disabled={changePrices.isPending} onClick={() => void savePrices()}>
+              {changePrices.isPending && <Loader2 className="animate-spin" />}Save prices
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <ul className="divide-y divide-border rounded-lg border border-border">
             {priceable.map((l) => {
               const list = l.listPrice ?? l.unitPrice;
               const p = newPrice(l);
               return (
-                <li key={l.saleId} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 text-xs">
-                    <p className="font-semibold">{formatNumber(l.quantity)} × {product(l.productId)}</p>
-                    <p className="text-caption text-muted-foreground">List price {formatNaira(list)} · now {formatNaira(priceEach(l))}</p>
+                <li key={l.saleId} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-label font-medium">{formatNumber(l.quantity)} × {product(l.productId)}</p>
+                    <p className="text-caption text-muted-foreground">List {formatNaira(list)} · now {formatNaira(priceEach(l))}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <Input aria-label={`New price for ${product(l.productId)}`} type="number" inputMode="decimal" min={0} step="0.01"
                       value={prices[l.saleId] ?? ""} onChange={(e) => setPrices((all) => ({ ...all, [l.saleId]: e.target.value }))}
-                      className="h-9 w-32 text-right" />
-                    <span className="w-28 text-right text-xs font-semibold tabular-nums">
+                      className="w-32 text-right" />
+                    <span className="w-28 text-right text-label font-semibold tabular-nums">
                       {Number.isFinite(p) && p > 0 ? formatNaira(p * l.quantity) : "—"}
                       {Number.isFinite(p) && p > 0 && p < list && (
                         <span className="block text-caption font-normal text-success">{Math.round((1 - p / list) * 1000) / 10}% below list</span>
@@ -313,52 +354,15 @@ export function OrderRow({ o, db, scope }: { o: CustomerOrderRecord; db: Db; sco
               );
             })}
           </ul>
-          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs">
+          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-label">
             <span className="text-muted-foreground">Order total</span>
             <span className="tabular-nums"><span className="text-muted-foreground">{formatNaira(orderTotal(o))} → </span><strong>{formatNaira(pricingTotal)}</strong></span>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input aria-label="Reason for the price change" placeholder="Why is the price changing?" value={reason}
-              onChange={(e) => setReason(e.target.value)} className="h-9 flex-1" />
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => { setPricing(false); setError(""); }}>Keep prices</Button>
-              <Button size="sm" disabled={busy} onClick={() => void savePrices()}>
-                {changePrices.isPending && <Loader2 className="size-3.5 animate-spin" />}Save prices
-              </Button>
-            </div>
-          </div>
+          <FormField label="Reason" htmlFor={`price-reason-${o.id}`} required error={priceError || undefined}>
+            <Input id={`price-reason-${o.id}`} placeholder="Why is the price changing?" value={reason} onChange={(e) => setReason(e.target.value)} />
+          </FormField>
         </div>
-      )}
-      {cancelling && (
-        <div className="mt-3 space-y-2">
-          {cancelling === "void" && (
-            <p className="rounded-md bg-destructive/5 px-3 py-2 text-caption text-destructive">
-              Voiding takes {formatNaira(orderTotal(o))} off {o.customerName}'s account and {person(o.repId)}'s sales, and puts the items back in stock.
-              Only do this if the goods are back on the shelf or never left. It can't be undone.
-            </p>
-          )}
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input autoFocus aria-label={cancelling === "void" ? "Reason for voiding" : "Reason for cancelling"}
-              placeholder={cancelling === "void" ? "Why is the order voided?" : "Why is the order cancelled?"}
-              value={reason} onChange={(e) => setReason(e.target.value)} className="h-9 flex-1" />
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => { setCancelling(false); setError(""); }}>Keep order</Button>
-              {cancelling === "void" ? (
-                <Button size="sm" variant="secondary" className="text-destructive" disabled={busy}
-                  onClick={() => void run(`${o.code} voided`, () => voidOrder.mutateAsync({ p_order_id: o.id, p_reason: reason.trim() }))}>
-                  {voidOrder.isPending && <Loader2 className="size-3.5 animate-spin" />}Void order
-                </Button>
-              ) : (
-                <Button size="sm" variant="secondary" className="text-destructive" disabled={busy}
-                  onClick={() => void run(`${o.code} cancelled`, () => cancel.mutateAsync({ p_order_id: o.id, p_reason: reason.trim() }))}>
-                  {cancel.isPending && <Loader2 className="size-3.5 animate-spin" />}Cancel order
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      <FieldError message={error} />
+      </Modal>
     </li>
   );
 }
