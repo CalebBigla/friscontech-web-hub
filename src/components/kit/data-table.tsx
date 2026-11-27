@@ -73,10 +73,11 @@ export function Tr({ children, onClick, className = "", selected = false }: { ch
   );
 }
 
-export function Td({ children, align, numeric = false, className = "", muted = false }: { children?: ReactNode; align?: Align; numeric?: boolean; className?: string; muted?: boolean }) {
+/** Cells stay on one line (narrow screens scroll sideways); pass `wrap` for long text. */
+export function Td({ children, align, numeric = false, className = "", muted = false, wrap = false }: { children?: ReactNode; align?: Align; numeric?: boolean; className?: string; muted?: boolean; wrap?: boolean }) {
   const a = align ?? (numeric ? "right" : "left");
   return (
-    <td className={`px-4 py-3 align-middle ${alignClass[a]} ${numeric ? "tabular-nums whitespace-nowrap" : ""} ${muted ? "text-muted-foreground" : ""} ${className}`}>
+    <td className={`px-4 py-3 align-middle ${alignClass[a]} ${numeric ? "tabular-nums" : ""} ${wrap ? "" : "whitespace-nowrap"} ${muted ? "text-muted-foreground" : ""} ${className}`}>
       {children}
     </td>
   );

@@ -273,7 +273,7 @@ function OwnerDashboardContent() {
       <section className="mt-4 grid gap-4 xl:grid-cols-2">
         <Panel
           title="Inventory"
-          subtitle={`${data.inv.status} · dead stock ${formatCompactNaira(data.dead)}`}
+          subtitle={`Stock health: ${data.inv.status.toLowerCase()}`}
           action={<Button variant="ghost" size="sm" asChild><Link to="/inventory">View all</Link></Button>}
         >
           <dl className="grid grid-cols-2 gap-px bg-border sm:grid-cols-3">
@@ -283,6 +283,7 @@ function OwnerDashboardContent() {
               { label: "Stock value", value: formatCompactNaira(data.inventorySummary.value) },
               { label: "Low stock", value: formatNumber(data.inventorySummary.low), tone: data.inventorySummary.low ? "text-warning" : "" },
               { label: "Out of stock", value: formatNumber(data.inventorySummary.out), tone: data.inventorySummary.out ? "text-destructive" : "" },
+              { label: "Dead stock", value: formatCompactNaira(data.dead) },
             ].map((item) => (
               <div key={item.label} className="bg-card px-5 py-4">
                 <dt className="text-caption text-muted-foreground">{item.label}</dt>
