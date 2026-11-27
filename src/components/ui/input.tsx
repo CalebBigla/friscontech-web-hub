@@ -10,7 +10,7 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? React.useEffec
  * keystroke (data-typing), both off for people who ask for reduced motion.
  */
 const fieldClass =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-[border-color,box-shadow,background-color] duration-200 ease-out file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground hover:border-foreground/25 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 data-[typing]:ring-[4px] data-[typing]:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none md:text-sm";
+  "flex h-9 w-full rounded-md border border-input bg-card px-3 py-1 text-base shadow-sm transition-[border-color,box-shadow] duration-150 ease-out file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground hover:border-foreground/25 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/25 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none md:text-body";
 
 /** Marks the field as "typing" for a moment after each keystroke, without re-rendering. */
 function useTypingPulse(forwarded: React.ForwardedRef<HTMLInputElement>) {

@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Inbox, Search, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Inbox, Search, X, type LucideIcon } from "lucide-react";
 import type { StockRequest, StockRequestStatus } from "@/data/mock-db";
 import { getRequestDisplayStatus, inventoryStatusLabel, requestDisplayLabel, type InventoryStatus, type RequestDisplayStatus } from "@/lib/inventory-calculations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import type { PerformanceBand } from "@/lib/calculations";
 import { bandLabel } from "@/lib/calculations";
 
@@ -11,15 +12,15 @@ export const ALL = "all";
 
 export function MetricCard({ icon: Icon, tone, label, value, detail, badge }: { icon: LucideIcon; tone: "success" | "brand" | "violet" | "warning"; label: string; value: string; detail?: string | undefined; badge?: string | undefined }) {
   return (
-    <article className="motion-lift h-full min-w-0 rounded-xl border border-border bg-card p-4 shadow-panel sm:p-5">
-      <div className="flex items-start justify-between gap-3">
+    <article className="h-full min-w-0 rounded-xl border border-border bg-card p-4 shadow-panel transition-shadow sm:p-5 [a:hover>&]:shadow-raised">
+      <div className="flex items-center justify-between gap-3">
         <p className="min-w-0 truncate text-label font-medium text-muted-foreground">{label}</p>
-        <span className={`metric-icon metric-icon-${tone} shrink-0`}><Icon className="size-[18px]" /></span>
+        <span className={`metric-icon metric-icon-${tone} shrink-0`}><Icon className="size-4" /></span>
       </div>
-      <p className="mt-2 truncate text-xl font-semibold tracking-tight tabular-nums sm:text-metric sm:leading-8">{value}</p>
-      <div className="mt-2 flex min-h-5 items-center gap-2">
+      <p className="mt-3 truncate text-xl font-semibold tracking-tight tabular-nums sm:text-metric">{value}</p>
+      <div className="mt-1.5 flex min-h-5 items-center gap-2">
         {badge && <span className={`status status-${tone}`}>{badge}</span>}
-        {detail && <p className="min-w-0 truncate text-xs text-muted-foreground">{detail}</p>}
+        {detail && <p className="min-w-0 truncate text-caption text-muted-foreground">{detail}</p>}
       </div>
     </article>
   );
@@ -28,8 +29,8 @@ export function MetricCard({ icon: Icon, tone, label, value, detail, badge }: { 
 export function FilterSelect({ value, onChange, options, label, className = "w-full sm:w-44" }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; label: string; className?: string }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={label} className={`h-9 bg-card text-label shadow-none ${className}`}><SelectValue /></SelectTrigger>
-      <SelectContent>{options.map((o) => <SelectItem key={o.value} value={o.value} className="text-label">{o.label}</SelectItem>)}</SelectContent>
+      <SelectTrigger aria-label={label} className={className}><SelectValue /></SelectTrigger>
+      <SelectContent>{options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
     </Select>
   );
 }
@@ -43,23 +44,25 @@ export function BandBadge({ band }: { band: PerformanceBand }) {
 export function ProgressBar({ value, band }: { value: number; band: PerformanceBand }) {
   return <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${band === "exceeding" ? "bg-success" : band === "on_track" ? "bg-warning" : "bg-destructive"}`} style={{ width: `${Math.min(value, 100)}%` }} /></div>;
 }
-export function Panel({ title, subtitle, action, children, className = "" }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+/** The card: title (and a short subtitle) with optional actions, then content. */
+export function Panel({ title, subtitle, action, children, className = "" }: { title: string; subtitle?: string | undefined; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border border-border bg-card shadow-panel ${className}`}>
-      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0"><h2 className="panel-title">{title}</h2>{subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}</div>
+    <section className={`min-w-0 rounded-xl border border-border bg-card shadow-panel ${className}`}>
+      <div className="flex flex-col gap-3 border-b border-border px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0"><h2 className="panel-title">{title}</h2>{subtitle && <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p>}</div>
         {action}
       </div>
       {children}
     </section>
   );
 }
-export function EmptyState({ title, detail, icon: Icon = Inbox }: { title: string; detail?: string; icon?: LucideIcon }) {
+export function EmptyState({ title, detail, icon: Icon = Inbox, action }: { title: string; detail?: string | undefined; icon?: LucideIcon; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center">
-      <span className="grid size-11 place-items-center rounded-full bg-muted text-muted-foreground"><Icon className="size-5" /></span>
-      <p className="mt-3 text-sm font-semibold">{title}</p>
-      {detail && <p className="mt-1 max-w-sm text-xs text-muted-foreground">{detail}</p>}
+      <span className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground"><Icon className="size-5" /></span>
+      <p className="mt-3 text-body font-medium">{title}</p>
+      {detail && <p className="mt-1 max-w-sm text-caption text-muted-foreground">{detail}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
@@ -72,13 +75,17 @@ export function LoadingState({ label = "Loading data…" }: { label?: string }) 
     <div role="status" aria-live="polite" aria-label={label} className="animate-pulse space-y-4">
       <span className="sr-only">{label}</span>
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => <div key={i} className="h-[118px] rounded-xl border border-border bg-card" />)}
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-[112px] rounded-xl border border-border bg-card p-5 shadow-panel">
+            <div className="h-3 w-24 rounded bg-muted" /><div className="mt-5 h-6 w-28 rounded bg-muted" />
+          </div>
+        ))}
       </div>
-      <div className="rounded-xl border border-border bg-card">
-        <div className="border-b border-border px-5 py-4"><div className="h-4 w-40 rounded bg-muted" /></div>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex items-center gap-4 border-b border-border px-5 py-4 last:border-0">
-            <div className="size-8 rounded-full bg-muted" /><div className="h-3 flex-1 rounded bg-muted" /><div className="h-3 w-20 rounded bg-muted" />
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-panel">
+        <div className="h-10 border-b border-border bg-muted" />
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-center gap-6 border-b border-border px-4 py-3.5 last:border-0">
+            <div className="h-3 w-40 rounded bg-muted" /><div className="h-3 flex-1 rounded bg-muted" /><div className="h-3 w-20 rounded bg-muted" />
           </div>
         ))}
       </div>
@@ -92,7 +99,7 @@ export function ErrorState({ title = "Could not load data", error }: { title?: s
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
       <div className="min-w-0 flex-1"><p className="font-semibold text-destructive">{title}</p><p className="mt-1 text-xs text-muted-foreground">{errorMessage(error)}</p></div>
       {/* Refetches only the failed queries; the rest stay cached. */}
-      <button type="button" onClick={() => void queryClient.refetchQueries({ predicate: (q) => q.state.status === "error" })} className="h-8 shrink-0 self-start rounded-md border border-border bg-card px-3 text-xs font-semibold hover:bg-muted">Try again</button>
+      <Button variant="secondary" size="sm" className="self-start" onClick={() => void queryClient.refetchQueries({ predicate: (q) => q.state.status === "error" })}>Try again</Button>
     </div>
   );
 }
@@ -103,7 +110,7 @@ export function DataGate({ isLoading, error, children }: { isLoading: boolean; e
   return <>{children}</>;
 }
 export function FieldError({ message }: { message?: string | undefined }) {
-  return message ? <p className="mt-1 text-caption font-medium text-destructive">{message}</p> : null;
+  return message ? <p role="alert" className="mt-1 text-caption font-medium text-destructive">{message}</p> : null;
 }
 
 const stockTone: Record<InventoryStatus, string> = { in_stock: "status-success", low_stock: "status-warning", out_of_stock: "status-danger" };
@@ -118,21 +125,27 @@ export function RequestStatusBadge({ status, request }: { status?: StockRequestS
 }
 export function SearchBox({ value, onChange, placeholder, className = "sm:w-60" }: { value: string; onChange: (v: string) => void; placeholder: string; className?: string }) {
   return (
-    <label className={`flex h-9 items-center gap-2 rounded-md border border-input bg-card px-3 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20 ${className}`}>
-      <Search className="size-4 shrink-0 text-muted-foreground" /><input value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-transparent text-label outline-none placeholder:text-muted-foreground" placeholder={placeholder} aria-label={placeholder} />
+    <label className={`flex h-9 items-center gap-2 rounded-md border border-input bg-card px-3 shadow-sm transition-[border-color,box-shadow] hover:border-foreground/25 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/25 ${className}`}>
+      <Search className="size-4 shrink-0 text-muted-foreground" />
+      <input type="search" value={value} onChange={(e) => onChange(e.target.value)} className="w-full min-w-0 bg-transparent text-label outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden" placeholder={placeholder} aria-label={placeholder} />
+      {value && (
+        <button type="button" onClick={() => onChange("")} aria-label="Clear search" className="grid size-5 shrink-0 place-items-center rounded text-muted-foreground hover:text-foreground">
+          <X className="size-3.5" />
+        </button>
+      )}
     </label>
   );
 }
 export function DetailItem({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="min-w-0"><p className="text-xs text-muted-foreground">{label}</p><div className="mt-1 truncate text-sm font-medium">{children}</div></div>;
+  return <div className="min-w-0"><p className="text-caption text-muted-foreground">{label}</p><div className="mt-1 truncate text-body font-medium">{children}</div></div>;
 }
 /** Compact summary tile for dense overview rows. */
 export function StatTile({ label, value, detail, tone = "brand" }: { label: string; value: string; detail?: string | undefined; tone?: "success" | "brand" | "violet" | "warning" | "danger" }) {
   return (
-    <article className="motion-lift min-w-0 rounded-xl border border-border bg-card px-4 py-3 shadow-panel">
+    <article className="min-w-0 rounded-xl border border-border bg-card px-4 py-3.5 shadow-panel">
       <div className="flex items-center gap-2"><span className={`size-2 shrink-0 rounded-full ${tone === "success" ? "bg-success" : tone === "warning" ? "bg-warning" : tone === "danger" ? "bg-destructive" : tone === "violet" ? "bg-violet" : "bg-primary"}`} /><p className="truncate text-caption text-muted-foreground">{label}</p></div>
-      <p className="mt-1 truncate text-base font-semibold tracking-tight tabular-nums sm:text-lg">{value}</p>
-      {detail && <p className="truncate text-caption text-muted-foreground">{detail}</p>}
+      <p className="mt-1.5 truncate text-lg font-semibold tracking-tight tabular-nums">{value}</p>
+      {detail && <p className="mt-0.5 truncate text-caption text-muted-foreground">{detail}</p>}
     </article>
   );
 }

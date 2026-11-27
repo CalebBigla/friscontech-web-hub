@@ -51,7 +51,8 @@ export function PeriodFilter({
   const range = periodRange(value, today);
   return (
     <div className={`flex flex-col gap-2 sm:flex-row sm:items-center ${className}`}>
-      <div role="group" aria-label="Period" className="grid grid-cols-4 rounded-md border border-border bg-card p-1">
+      {/* Segmented control: the chosen period sits raised on a muted track. */}
+      <div role="group" aria-label="Period" className="grid h-9 grid-cols-4 rounded-md bg-muted p-0.5">
         {choices.map((c) => (
           <Button
             key={c.key}
@@ -59,8 +60,8 @@ export function PeriodFilter({
             size="sm"
             title={c.hint}
             aria-pressed={value.period === c.key}
-            variant={value.period === c.key ? "default" : "ghost"}
-            className="h-7 px-3 text-xs"
+            variant="ghost"
+            className={`h-8 rounded-[5px] px-3 ${value.period === c.key ? "bg-card text-foreground shadow-sm hover:bg-card" : ""}`}
             onClick={() =>
               onChange(c.key === "custom" ? { period: "custom", from: range.from, to: range.to } : { period: c.key })
             }
@@ -77,16 +78,16 @@ export function PeriodFilter({
             max={today}
             value={range.from}
             onChange={(e) => e.target.value && onChange({ ...value, from: e.target.value })}
-            className="h-9 bg-card text-xs"
+            className="h-9 text-label"
           />
-          <span className="text-xs text-muted-foreground">to</span>
+          <span className="text-caption text-muted-foreground">to</span>
           <Input
             type="date"
             aria-label="To date"
             max={today}
             value={range.to}
             onChange={(e) => e.target.value && onChange({ ...value, to: e.target.value })}
-            className="h-9 bg-card text-xs"
+            className="h-9 text-label"
           />
         </div>
       )}
