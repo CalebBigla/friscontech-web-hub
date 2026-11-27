@@ -71,7 +71,7 @@
   --color-chart-target: var(--chart-target);
   --color-avatar: var(--avatar);
   --color-danger-soft: var(--danger-soft);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-light-copy: var(--font-sans);
   --shadow-panel: 0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent), 0 1px 1px color-mix(in oklab, var(--foreground) 2%, transparent);
   --shadow-raised: 0 4px 12px color-mix(in oklab, var(--foreground) 6%, transparent), 0 1px 3px color-mix(in oklab, var(--foreground) 4%, transparent);
@@ -189,7 +189,6 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "cv11", "ss01";
     letter-spacing: -0.003em;
   }
 
