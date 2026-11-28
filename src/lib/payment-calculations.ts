@@ -492,6 +492,8 @@ export function getPaymentOverviewSummary(
   return {
     soldToCustomers,
     customerCollections,
+    /** Reps' own walk-in sales: 0 since reps sell through customer orders (older months may have some). */
+    walkIns,
     customersOwe: soldToCustomers - customerCollections,
     paidIn: sum("confirmed") + sum("submitted") + sum("acknowledged"),
     confirmed: sum("confirmed"),

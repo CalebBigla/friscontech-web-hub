@@ -123,14 +123,15 @@ export function PaymentPage() {
       (method === "all" || (method === "cash" ? e.cash > 0 : e.transfer > 0)) &&
       (customerId === "all" || e.customerId === customerId),
   );
-  // What the rows shown add up to, split by how the money came in (declined payments left out).
+  // What the rows shown add up to (declined left out). A customer payment and the
+  // pay-in that hands that money to the manager are the same naira at two steps,
+  // so the two kinds are totalled separately, never added together.
   const counted = rows.filter((e) => e.status !== "declined");
-  const shownCash = counted.reduce((sum, e) => sum + e.cash, 0);
-  const shownTransfer = counted.reduce((sum, e) => sum + e.transfer, 0);
+  const kindTotal = (k: PaymentKind) => counted.filter((e) => e.kind === k).reduce((sum, e) => sum + e.amount, 0);
   const shownTotals = [
-    method !== "transfer" && `Cash ${formatNaira(shownCash)}`,
-    method !== "cash" && `Transfer ${formatNaira(shownTransfer)}`,
-  ].filter(Boolean).join(" · ");
+    counted.some((e) => e.kind === "customer") && `Collected from customers ${formatNaira(kindTotal("customer"))}`,
+    counted.some((e) => e.kind === "rep") && `Paid in to manager ${formatNaira(kindTotal("rep"))}`,
+  ].filter(Boolean).join(" · ") || "Nothing counted";
   const tableSubtitle = `${rangeLabel} · ${rows.length} payment${rows.length === 1 ? "" : "s"} · ${shownTotals}${
     counted.length < rows.length ? " (declined not counted)" : ""
   }`;
@@ -223,7 +224,7 @@ export function PaymentPage() {
           tone="violet"
           label="Still to pay in"
           value={formatNaira(summary.outstanding)}
-          detail="Collected (walk-ins + customer payments) − paid in"
+          detail={summary.walkIns > 0 ? "Collected (customer payments + walk-ins) − paid in" : "Collected from customers − paid in"}
         />
       </div>
 
@@ -328,11 +329,11 @@ export function PaymentPage() {
                   >
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(e.date)}</td>
                     <td className="px-4 py-3">
-                      <p className="font-semibold">{e.kind === "customer" ? partyName(db, e) : "Walk-in sales"}</p>
+                      <p className="font-semibold">{e.kind === "customer" ? partyName(db, e) : "Pay-in to manager"}</p>
                       <p className="text-caption text-muted-foreground">
                         {e.kind === "customer"
                           ? `Collected by ${userName(db, e.repId)}`
-                          : `${kindLabel.rep} by ${userName(db, e.repId)}`}{" "}
+                          : `Paid in by ${userName(db, e.repId)}`}{" "}
                         · {e.id}
                       </p>
                     </td>
@@ -507,6 +508,12 @@ function PaymentDrawer({
   };
 
   const repSales = entry?.kind === "rep" ? getRepSalesForPeriod(db, entry.repId, entry.period) : [];
+  // The customer payments the rep collected in the pay-in's month (what the pay-in hands over).
+  const repCollections = entry?.kind === "rep"
+    ? db.customerPayments
+        .filter((p) => p.tenantId === db.tenant.id && p.receivedBy === entry.repId && p.status === "confirmed" && p.paymentDate.startsWith(entry.period))
+        .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
+    : [];
   const repPosition =
     entry?.kind === "rep" ? getRepPaymentSummary(db, entry.repId, entry.period) : null;
   const customerPayment =
@@ -546,11 +553,11 @@ function PaymentDrawer({
                 <Row label="Transfer">{formatNaira(entry.transfer)}</Row>
                 {repPosition && (
                   <>
-                    <Row label="Walk-in sales for the month">{formatNaira(repPosition.walkInSales)}</Row>
-                    <Row label="Customer payments collected">{formatNaira(repPosition.customerCollections)}</Row>
+                    <Row label="Collected from customers this month">{formatNaira(repPosition.customerCollections)}</Row>
+                    {repPosition.walkInSales > 0 && <Row label="Walk-in sales this month">{formatNaira(repPosition.walkInSales)}</Row>}
                     <Row label="Total to pay in">{formatNaira(repPosition.totalSales)}</Row>
                     <Row label="Confirmed so far">{formatNaira(repPosition.confirmed)}</Row>
-                    <Row label="Outstanding (not yet reported)">
+                    <Row label="Not yet paid in">
                       {formatNaira(repPosition.outstanding)}
                     </Row>
                   </>
@@ -580,10 +587,18 @@ function PaymentDrawer({
               <Section
                 title={
                   entry.kind === "rep"
-                    ? `Linked walk-in sales (${repSales.length})`
+                    ? `Customer payments collected (${repCollections.length})`
                     : "Linked order lines"
                 }
               >
+                {entry.kind === "rep" && repCollections.slice(0, 8).map((p) => (
+                  <Row key={p.id} label={`${formatDate(p.paymentDate)} · ${db.customers.find((c) => c.id === p.customerId)?.name ?? "Customer"}`}>
+                    {formatNaira(p.amount)}
+                  </Row>
+                ))}
+                {entry.kind === "rep" && repSales.length > 0 && (
+                  <p className="pt-2 text-caption font-medium text-muted-foreground">Walk-in sales ({repSales.length})</p>
+                )}
                 {(entry.kind === "rep" ? repSales.slice(-8).reverse() : linkedOrderLines).map(
                   (s) => (
                     <Row
@@ -594,8 +609,8 @@ function PaymentDrawer({
                     </Row>
                   ),
                 )}
-                {(entry.kind === "rep" ? repSales : linkedOrderLines).length === 0 && (
-                  <p className="text-muted-foreground">No linked sales.</p>
+                {(entry.kind === "rep" ? repSales.length + repCollections.length : linkedOrderLines.length) === 0 && (
+                  <p className="text-muted-foreground">{entry.kind === "rep" ? "Nothing collected this month." : "No linked sales."}</p>
                 )}
                 {entry.kind === "customer" && entry.customerId && scope.canViewCustomers && (
                   <Link
@@ -903,9 +918,9 @@ function SubmitPaymentDialog({
         <DialogHeader>
           <DialogTitle>Submit payment</DialogTitle>
           <DialogDescription>
-            Pay in the money you collected this month: your walk-in sales (₦{position.walkInSales.toLocaleString("en-NG")})
-            and customer payments (₦{position.customerCollections.toLocaleString("en-NG")}). Your manager confirms
-            cash; a transfer is acknowledged by your manager and confirmed by the Owner.
+            Pay in the money you collected from customers this month (₦{position.customerCollections.toLocaleString("en-NG")})
+            {position.walkInSales > 0 && <> and your walk-in sales (₦{position.walkInSales.toLocaleString("en-NG")})</>}.
+            Your manager confirms cash; a transfer is acknowledged by your manager and confirmed by the Owner.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
