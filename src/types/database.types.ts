@@ -766,6 +766,7 @@ export type Database = {
           note: string | null
           outstanding_amount: number
           payment_ids: Json
+          payment_date: string
           period: string
           status: string
           submitted_at: string | null

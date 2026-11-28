@@ -75,7 +75,7 @@ export interface CustomerPaymentMigrationRow {
 /** Column shape follows 20260114160000_create_financial_workflows.sql. */
 export interface PaymentMigrationRow {
   id: string; tenant_id: string; branch_id: string; sales_rep_id: string; manager_id: string;
-  period: string; cash_amount: number; transfer_amount: number; transfer_reference: string | null;
+  period: string; payment_date?: string | null; cash_amount: number; transfer_amount: number; transfer_reference: string | null;
   proof_name: string | null; status: Payment["status"]; submitted_at: string;
   acknowledged_at: string | null; acknowledged_by: string | null; confirmed_at: string | null;
   confirmed_by: string | null; declined_at: string | null; declined_by: string | null;
@@ -523,6 +523,7 @@ export function transformPayment(dbRow: PaymentMigrationRow): Payment {
     salesRepId:       dbRow['sales_rep_id'],
     managerId:        dbRow['manager_id'],
     period:           dbRow['period'],
+    ...(dbRow['payment_date'] ? { paymentDate: dbRow['payment_date'] } : {}),
     cashAmount:       dbRow['cash_amount'],
     transferAmount:   dbRow['transfer_amount'],
     ...(dbRow['transfer_reference'] ? { transferReference: dbRow['transfer_reference'] } : {}),

@@ -1,6 +1,6 @@
 import type { Db, Expense, ManagerRemittance, Payment, RemittanceStatus } from "@/data/mock-db";
 import type { AccessScope } from "@/lib/session";
-import { getRepTotalSales, isValidPaymentPeriod } from "@/lib/payment-calculations";
+import { getRepBalance, getRepTotalSales, isValidPaymentPeriod } from "@/lib/payment-calculations";
 import type {
   OwnerRemittance,
   OwnerRemittancePaymentMethod,
@@ -30,75 +30,42 @@ export const expenseCategoryLabel: Record<(typeof expenseCategories)[number], st
   other: "Other",
 };
 
-export function getManagerEligiblePayments(db: Db, managerId: string, period: string): Payment[] {
-  if (!isValidPaymentPeriod(period)) return [];
-  return db.payments.filter((payment) => {
-    const branch = db.branches.find((item) => item.id === payment.branchId);
-    return (
-      payment.tenantId === db.tenant.id &&
-      payment.managerId === managerId &&
-      payment.period === period &&
-      (payment.status === "acknowledged" || payment.status === "confirmed") &&
-      branch?.tenantId === db.tenant.id &&
-      branch.managerId === managerId
-    );
-  });
-}
-
-/** Owner-confirmed customer account payments in the manager's branch for the month. */
-export function getManagerCustomerCollections(db: Db, managerId: string, period: string) {
-  if (!isValidPaymentPeriod(period)) return [];
-  return db.customerPayments.filter(
-    (p) =>
-      p.tenantId === db.tenant.id &&
-      p.managerId === managerId &&
-      p.status === "confirmed" &&
-      p.paymentDate.startsWith(`${period}-`),
-  );
-}
+/** The branch this manager runs (null when none). */
+const managedBranchId = (db: Db, managerId: string) =>
+  db.branches.find((b) => b.tenantId === db.tenant.id && b.managerId === managerId && b.status === "active")?.id ?? null;
 
 /**
- * Walk-in sales of reps with an eligible payment + the manager's own walk-in sales
- * + confirmed customer payments (as submit_manager_remittance). Credit orders never count.
+ * Rep pay-ins of the manager's branch dated in the month that reached the manager
+ * (acknowledged or confirmed), as submit_manager_remittance. Matched by branch.
  */
-export function getManagerTotalReceived(db: Db, managerId: string, period: string) {
-  const customer = getManagerCustomerCollections(db, managerId, period).reduce(
-    (s, p) => s + p.amount,
-    0,
+export function getManagerEligiblePayments(db: Db, managerId: string, period: string): Payment[] {
+  if (!isValidPaymentPeriod(period)) return [];
+  const branchId = managedBranchId(db, managerId);
+  return db.payments.filter(
+    (payment) =>
+      payment.tenantId === db.tenant.id &&
+      payment.branchId === branchId &&
+      payment.period === period &&
+      (payment.status === "acknowledged" || payment.status === "confirmed"),
   );
-  return customer + getManagerWalkInReceived(db, managerId, period);
 }
-function getManagerWalkInReceived(db: Db, managerId: string, period: string) {
-  const repIds = [
-    ...new Set(
-      getManagerEligiblePayments(db, managerId, period).map((payment) => payment.salesRepId),
-    ),
-  ];
-  // A manager's own walk-in takings are theirs to remit (20261116100000).
-  return repIds.reduce((sum, repId) => sum + getRepTotalSales(db, repId, period), 0) + getRepTotalSales(db, managerId, period);
+
+/** What the manager received for the month: rep pay-ins + their own walk-in sales. */
+export function getManagerTotalReceived(db: Db, managerId: string, period: string) {
+  const paidIn = getManagerEligiblePayments(db, managerId, period).reduce((s, p) => s + p.cashAmount + p.transferAmount, 0);
+  return paidIn + getRepTotalSales(db, managerId, period);
 }
 
 export function getManagerPaymentBreakdown(db: Db, managerId: string, period: string) {
   const payments = getManagerEligiblePayments(db, managerId, period);
-  const customer = getManagerCustomerCollections(db, managerId, period);
+  const branchId = managedBranchId(db, managerId);
+  const reps = db.users.filter((u) => u.tenantId === db.tenant.id && u.role === "sales_rep" && u.branchId === branchId);
   return {
     // The manager's own walk-in sales are taken in cash or transfer; counted with cash.
-    cash:
-      payments.reduce((sum, payment) => sum + payment.cashAmount, 0) +
-      customer.filter((p) => p.method === "cash").reduce((s, p) => s + p.amount, 0) +
-      getRepTotalSales(db, managerId, period),
-    transfer:
-      payments.reduce((sum, payment) => sum + payment.transferAmount, 0) +
-      customer.filter((p) => p.method === "transfer").reduce((s, p) => s + p.amount, 0),
-    outstanding: [...new Set(payments.map((payment) => payment.salesRepId))].reduce(
-      (sum, repId) => {
-        const repCollected = payments
-          .filter((payment) => payment.salesRepId === repId)
-          .reduce((amount, payment) => amount + payment.cashAmount + payment.transferAmount, 0);
-        return sum + Math.max(getRepTotalSales(db, repId, period) - repCollected, 0);
-      },
-      0,
-    ),
+    cash: payments.reduce((sum, payment) => sum + payment.cashAmount, 0) + getRepTotalSales(db, managerId, period),
+    transfer: payments.reduce((sum, payment) => sum + payment.transferAmount, 0),
+    /** what the branch's reps still have to pay in (all dates) */
+    outstanding: Math.max(reps.reduce((sum, rep) => sum + getRepBalance(db, rep.id), 0), 0),
   };
 }
 
@@ -333,7 +300,6 @@ export function getManagerRemittanceAmounts(db: Db, managerId: string, period: s
     const branch = db.branches.find((item) => item.id === remittance.branchId);
     return (
       remittance.tenantId === db.tenant.id &&
-      remittance.managerId === managerId &&
       remittance.period === period &&
       remittance.status !== "declined" &&
       branch?.tenantId === db.tenant.id &&

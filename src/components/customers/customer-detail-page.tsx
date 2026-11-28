@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Ban, Download, FileText } from "lucide-react";
+import { ConfirmDialog } from "@/components/kit/confirm-dialog";
+import { RowActions } from "@/components/kit/row-actions";
+import { useVoidCustomerPayment } from "@/hooks/use-customer-payments";
 import { toast } from "sonner";
 
 import { AppShell, RestrictedNotice } from "@/components/app-shell";
@@ -53,6 +56,9 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
   const scope = getAccessScope(db, userId);
   const customer = db.customers.find((c) => c.id === customerId);
   const [dialog, setDialog] = useState<"edit" | "order" | "payment" | "limit" | "reassign" | null>(null);
+  // Owner: void a confirmed customer payment (moved here from Payments, which is pay-ins only).
+  const [voiding, setVoiding] = useState<string | null>(null);
+  const voidCustomerPayment = useVoidCustomerPayment();
   const { accounts, isLoading: accountsLoading, error: accountsError } = useCustomerAccounts(db, scope);
   const { data: allOrders = [] } = useCustomerOrders(scope.canViewOrders);
 
@@ -309,7 +315,7 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
         <TabsContent value="payments">
           <Panel title="Payments" subtitle="Credited to the account as soon as the rep records them">
             {payments.length ? (
-              <Table head={["Date", "Payment", "Amount", "Method", "Collected by", "Status"]}>
+              <Table head={["Date", "Payment", "Amount", "Method", "Collected by", "Status", ...(scope.canConfirmPayments ? [""] : [])]}>
                 {payments.map((p) => (
                   <tr key={p.id}>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(p.paymentDate)}</td>
@@ -321,8 +327,16 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
                     <td className="px-4 py-3">{p.method === "cash" ? "Cash" : "Transfer"}</td>
                     <td className="px-4 py-3">{name(p.receivedBy)}</td>
                     <td className="px-4 py-3">
-                      <PaymentStatusBadge status={p.status} />
+                      <PaymentStatusBadge status={p.status} voided={p.status === "declined" && !!p.confirmedAt} />
+                      {p.declineReason && <p className="mt-1 text-caption text-muted-foreground">{p.declineReason}</p>}
                     </td>
+                    {scope.canConfirmPayments && (
+                      <td className="px-2 py-3 text-right">
+                        <RowActions label={`Actions for payment ${p.id}`} actions={[
+                          { label: "Void payment", icon: Ban, danger: true, hidden: p.status !== "confirmed", onSelect: () => setVoiding(p.id) },
+                        ]} />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </Table>
@@ -333,6 +347,19 @@ export function CustomerDetailPage({ customerId }: { customerId: string }) {
         </TabsContent>
       </Tabs>
 
+      <ConfirmDialog
+        open={!!voiding}
+        onOpenChange={(o) => !o && setVoiding(null)}
+        title="Void this payment?"
+        description="It comes off the customer's account and is no longer counted as collected. This can't be undone."
+        confirmLabel="Void payment"
+        reason={{ label: "Reason", placeholder: "Why is it voided?", required: true }}
+        onConfirm={async (why) => {
+          if (!voiding) return;
+          await voidCustomerPayment.mutateAsync({ p_payment_id: voiding, p_reason: why });
+          toast.success("Payment voided");
+        }}
+      />
       {scope.canManageCustomers && (
         <CustomerFormDialog
           open={dialog === "edit"}

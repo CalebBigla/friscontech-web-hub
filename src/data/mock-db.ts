@@ -142,7 +142,10 @@ export type Payment = {
   branchId: string;
   salesRepId: string;
   managerId: string;
+  /** YYYY-MM of paymentDate (older pay-ins: the month the rep chose). */
   period: string;
+  /** The day the rep paid the money in to their manager. */
+  paymentDate?: string;
   cashAmount: number;
   transferAmount: number;
   transferReference?: string;

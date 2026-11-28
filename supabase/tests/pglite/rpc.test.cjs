@@ -247,30 +247,41 @@ module.exports = async function run(db) {
   err("confirm_customer_payment: nothing to confirm", await as(ID.owner, `SELECT public.confirm_customer_payment($1)`, [cp.id]), { includes: "pending" });
   check("record_customer_payment: no approval notifications", (await one(`SELECT count(*)::int n FROM public.notifications WHERE entity_id=$1`, [cp.id])).n === 0);
 
-  // ---------------- rep payments ----------------
+  // ---------------- rep payments (pay-ins to the manager) ----------------
+  // A pay-in has a full date; the rep can pay in up to the customer money they
+  // collected and haven't paid in yet (20261128100000). Walk-ins don't count.
   const period = (await one(`SELECT to_char(CURRENT_DATE,'YYYY-MM') p`)).p;
-  err("submit_payment: more than sales", await as(ID.repA1,
-    `SELECT public.submit_payment($1,400000,0,null,null,null)`, [period]), { hint: "transferAmount" });
-  err("submit_payment: future month", await as(ID.repA1,
-    `SELECT public.submit_payment('2999-01',1,0,null,null,null)`), { hint: "period" });
-  err("submit_payment: wrong role", await as(ID.mgrA1, `SELECT public.submit_payment($1,1,0,null,null,null)`, [period]), DENY);
+  const balance = async () => Number((await one(`SELECT app_private.rep_balance($1,$2) n`, [tenantA, ID.repA1])).n);
+  check("rep_balance: customer collections only (old walk-in sale left out)", (await balance()) === 20000, String(await balance()));
+  ok("record_customer_payment: a second collection", await as(ID.repA1,
+    `SELECT * FROM public.record_customer_payment($1,330000,'cash',null,CURRENT_DATE,null,null,null)`, [cust.id]));
+  check("rep_balance: grows with each collection", (await balance()) === 350000, String(await balance()));
+  err("submit_payment: more than collected", await as(ID.repA1,
+    `SELECT public.submit_payment(CURRENT_DATE,350001,0,null,null,null)`), { hint: "transferAmount" });
+  err("submit_payment: future date", await as(ID.repA1,
+    `SELECT public.submit_payment(CURRENT_DATE + 2,1,0,null,null,null)`), { hint: "paymentDate" });
+  err("submit_payment: an amount is needed", await as(ID.repA1,
+    `SELECT public.submit_payment(CURRENT_DATE,0,0,null,null,null)`), { hint: "cashAmount" });
+  err("submit_payment: wrong role", await as(ID.mgrA1, `SELECT public.submit_payment(CURRENT_DATE,1,0,null,null,null)`), DENY);
   const payKey = "44444444-4444-4444-4444-444444444444";
-  const pay = ok("submit_payment: valid (sales 300,000)", await as(ID.repA1,
-    `SELECT * FROM public.submit_payment($1,200000,100000,'TRX-9',null,$2)`, [period, payKey]));
+  const pay = ok("submit_payment: valid with a date", await as(ID.repA1,
+    `SELECT * FROM public.submit_payment(CURRENT_DATE,200000,100000,'TRX-9',null,$1::uuid)`, [payKey]));
   check("submit_payment: text id generated", /^PAY-\d+$/.test(pay?.id ?? ""), pay?.id);
-  await as(ID.repA1, `SELECT * FROM public.submit_payment($1,200000,100000,'TRX-9',null,$2)`, [period, payKey]);
+  check("submit_payment: dated, period is its month", pay?.period === period && !!pay?.payment_date, JSON.stringify(pay && { p: pay.period, d: pay.payment_date }));
+  await as(ID.repA1, `SELECT * FROM public.submit_payment(CURRENT_DATE,200000,100000,'TRX-9',null,$1::uuid)`, [payKey]);
   const payCount = await one(`SELECT count(*)::int n FROM public.payments`);
   check("submit_payment: repeat does not create twice", payCount.n === 1, `got ${payCount.n}`);
-  // What the rep owes includes the 20,000 they collected from a customer.
-  err("submit_payment: no more than walk-in sales + customer collections", await as(ID.repA1, `SELECT public.submit_payment($1,20001,0,null,null,null)`, [period]), { hint: "transferAmount" });
-  check("rep_amount_due: walk-in sales + customer collections", Number((await one(`SELECT app_private.rep_amount_due($1,$2,$3) n`, [tenantA, ID.repA1, period])).n) === 320000);
+  check("rep_balance: down by the pay-in", (await balance()) === 50000, String(await balance()));
+  err("submit_payment: no more than the balance left", await as(ID.repA1, `SELECT public.submit_payment(CURRENT_DATE,50001,0,null,null,null)`), { hint: "transferAmount" });
+  check("rep_amount_due: this month's collections, no walk-ins", Number((await one(`SELECT app_private.rep_amount_due($1,$2,$3) n`, [tenantA, ID.repA1, period])).n) === 350000);
   err("acknowledge_payment: wrong tenant", await as(ID.mgrB1, `SELECT public.acknowledge_payment($1,null,null)`, [pay.id]), { includes: "not found" });
   ok("acknowledge_payment: branch manager", await as(ID.mgrA1, `SELECT public.acknowledge_payment($1,null,null)`, [pay.id]));
   err("decline_payment: rep cannot", await as(ID.repA1, `SELECT public.decline_payment($1,'x')`, [pay.id]), DENY);
   // Transfers are confirmed by the Owner, never the manager.
   err("confirm_payment: manager cannot confirm a transfer", await as(ID.mgrA1, `SELECT public.confirm_payment($1)`, [pay.id]), DENY);
   // Cash: the branch manager confirms; the Owner does not.
-  const cash = ok("submit_payment: cash only", await as(ID.repA1, `SELECT * FROM public.submit_payment($1,20000,0,null,null,null)`, [period]));
+  const cash = ok("submit_payment: cash only (month-based call still works)", await as(ID.repA1, `SELECT * FROM public.submit_payment($1,20000,0,null,null,null)`, [period]));
+  check("submit_payment: month-based call is dated today", cash?.period === period && !!cash?.payment_date, JSON.stringify(cash && { p: cash.period, d: cash.payment_date }));
   err("acknowledge_payment: cash is not acknowledged", await as(ID.mgrA1, `SELECT public.acknowledge_payment($1,null,null)`, [cash.id]), { includes: "Cash payments" });
   err("confirm_payment: owner cannot confirm cash", await as(ID.owner, `SELECT public.confirm_payment($1)`, [cash.id]), DENY);
   err("decline_payment: owner cannot decline cash", await as(ID.owner, `SELECT public.decline_payment($1,'x')`, [cash.id]), DENY);
@@ -303,13 +314,17 @@ module.exports = async function run(db) {
   ok("update_expense: valid", await as(ID.mgrA1, `SELECT public.update_expense($1,'transport',12000,CURRENT_DATE,'Fuel',null,null)`, [exp.id]));
 
   // ---------------- manager remittance ----------------
-  // received = walk-in sales of reps with eligible payments (300,000) + the manager own walk-ins (300,000) + confirmed customer payments (20,000)
-  // net due = 620,000 - 12,000 expenses = 608,000
+  // A back-dated pay-in belongs to its own month and is still waiting: it doesn't count below.
+  const late = ok("submit_payment: back-dated", await as(ID.repA1, `SELECT * FROM public.submit_payment(CURRENT_DATE - 40,1000,0,null,null,null)`));
+  check("submit_payment: back-dated period is that month", late?.period === (await one(`SELECT to_char(CURRENT_DATE - 40,'YYYY-MM') p`)).p);
+  // received = rep pay-ins that reached the manager this month (300,000; the voided cash pay-in is out)
+  //          + the manager's own walk-ins (300,000). Customer collections are not counted.
+  // net due = 600,000 - 12,000 expenses = 588,000
   err("submit_manager_remittance: more than net due", await as(ID.mgrA1,
-    `SELECT public.submit_manager_remittance($1,608001,0,null,null)`, [period]), { hint: "transferAmount" });
+    `SELECT public.submit_manager_remittance($1,588001,0,null,null)`, [period]), { hint: "transferAmount" });
   const rem = ok("submit_manager_remittance: valid", await as(ID.mgrA1,
-    `SELECT * FROM public.submit_manager_remittance($1,600000,8000,'TRX-R',null)`, [period]));
-  check("submit_manager_remittance: server totals", Number(rem?.total_received) === 620000 && Number(rem?.net_remittance_due) === 608000
+    `SELECT * FROM public.submit_manager_remittance($1,580000,8000,'TRX-R',null)`, [period]));
+  check("submit_manager_remittance: server totals", Number(rem?.total_received) === 600000 && Number(rem?.net_remittance_due) === 588000
     && Number(rem?.outstanding_amount) === 0, JSON.stringify(rem && { r: rem.total_received, n: rem.net_remittance_due, o: rem.outstanding_amount }));
   err("submit_manager_remittance: repeat while awaiting review", await as(ID.mgrA1,
     `SELECT public.submit_manager_remittance($1,0,0,null,null)`, [period]), { includes: "already awaiting" });

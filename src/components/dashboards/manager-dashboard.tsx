@@ -41,7 +41,7 @@ function ManagerDashboardContent() {
   const branch = db.branches.find(
     (item) => item.id === branchId && item.tenantId === scope.user.tenantId,
   );
-  const paymentRows = getPaymentsForScope(db, scope, { period: month });
+  const paymentRows = getPaymentsForScope(db, scope, { period: month }).filter((p) => p.status !== "declined");
   const summary = getManagerPaymentSummary(db, paymentRows, scope.user.id, month);
   const actionable = getApprovals(db, scope).filter(
     (item) => item.status === "pending" && canReviewApproval(db, scope.user.id, item),
@@ -72,23 +72,23 @@ function ManagerDashboardContent() {
         <MetricCard
           icon={CircleDollarSign}
           tone="success"
-          label="Revenue This Month"
+          label="Sales this month"
           value={formatCompactNaira(summary.totalSales)}
-          detail="Completed branch sales"
+          detail="Fulfilled orders and walk-ins"
         />
         <MetricCard
           icon={Wallet}
           tone="brand"
-          label="Total Remittance"
+          label="Paid in this month"
           value={formatCompactNaira(summary.cashPayment + summary.transferPayment)}
-          detail="Cash + transfer received"
+          detail={summary.awaiting ? `Confirmed · ${formatCompactNaira(summary.awaiting)} awaiting` : "Confirmed rep pay-ins"}
         />
         <MetricCard
           icon={CircleDollarSign}
           tone="warning"
-          label="Total Outstanding"
+          label="Not yet paid in"
           value={formatCompactNaira(summary.outstanding)}
-          detail="Reported unpaid sales balance"
+          detail="Customer money reps still hold"
         />
         <Link
           to="/approvals"
@@ -154,15 +154,14 @@ function ManagerDashboardContent() {
       </section>
       <section className="mt-4 grid gap-4 sm:grid-cols-2">
         <Panel
-          title="Collection progress"
-          subtitle="Confirmed pay-ins against what reps collected (walk-in sales and customer payments)"
+          title="Paid in by reps"
+          subtitle="Customer money reps collected that they have paid in, all dates"
         >
           <div className="p-5">
             <div className="flex items-end justify-between gap-3">
               <strong className="text-3xl">{formatPercent(summary.collectionRate, 0)}</strong>
               <span className="text-xs text-muted-foreground">
-                {formatCompactNaira(summary.cashPayment + summary.transferPayment)} collected /{" "}
-                {formatCompactNaira(summary.amountDue)} due
+                {formatCompactNaira(summary.paidIn)} paid in / {formatCompactNaira(summary.collected)} collected
               </span>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">

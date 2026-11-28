@@ -268,8 +268,10 @@ export type PlannedRpcs = {
    * Must replace the payment_status_notification trigger, which reads the dropped
    * users.name column (so every insert fails) and notifies only one owner.
    */
+  /** Rep pays in to their manager (20261128100000): a full date, up to what they still hold. */
   submit_payment: {
-    p_period: string;
+    /** YYYY-MM-DD, today or earlier */
+    p_payment_date: string;
     p_cash_amount: number;
     p_transfer_amount: number;
     p_transfer_reference: string | null;

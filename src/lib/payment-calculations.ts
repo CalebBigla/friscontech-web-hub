@@ -71,19 +71,39 @@ export function getRepSalesForPeriod(db: Db, repId: string, period: string) {
 export const getRepTotalSales = (db: Db, repId: string, period: string) =>
   getRepSalesForPeriod(db, repId, period).reduce((sum, sale) => sum + saleTotal(sale), 0);
 
-/** Customer payments a rep collected in the month (credited to the customer at once). */
+/**
+ * Customer money a rep collected under the current flow: credited to the customer at
+ * once, so confirmed by the rep themselves. Payments the Owner confirmed under the
+ * earlier flow had already been handed over through that chain and don't count.
+ */
+export const isRepCollection = (p: CustomerPayment) => p.status === "confirmed" && p.confirmedBy === p.receivedBy;
+
+/** Customer money a rep collected in a month (YYYY-MM). */
 export const getRepCustomerCollections = (db: Db, repId: string, period: string) =>
   db.customerPayments
-    .filter((p) => p.tenantId === db.tenant.id && p.receivedBy === repId && p.status === "confirmed" && p.paymentDate.startsWith(period))
+    .filter((p) => p.tenantId === db.tenant.id && p.receivedBy === repId && isRepCollection(p) && p.paymentDate.startsWith(period))
     .reduce((sum, p) => sum + p.amount, 0);
 
+/** All customer money a rep has collected (app_private.rep_collected). */
+export const getRepCollectedTotal = (db: Db, repId: string) =>
+  db.customerPayments
+    .filter((p) => p.tenantId === db.tenant.id && p.receivedBy === repId && isRepCollection(p))
+    .reduce((sum, p) => sum + p.amount, 0);
+
+/** Everything a rep has paid in to their manager, not declined (app_private.rep_paid_in). */
+export const getRepPaidInTotal = (db: Db, repId: string) =>
+  db.payments
+    .filter((p) => p.tenantId === db.tenant.id && p.salesRepId === repId && p.status !== "declined")
+    .reduce((sum, p) => sum + p.cashAmount + p.transferAmount, 0);
+
 /**
- * What a rep must pay in for a month: walk-in sales plus the customer payments
- * they collected (app_private.rep_amount_due). Payments are not sales: targets
- * only count sales.
+ * What a rep still has to pay in, whatever the dates (app_private.rep_balance):
+ * customer money collected − pay-ins not declined. Reps don't make walk-in sales.
  */
-export const getRepAmountDue = (db: Db, repId: string, period: string) =>
-  getRepTotalSales(db, repId, period) + getRepCustomerCollections(db, repId, period);
+export const getRepBalance = (db: Db, repId: string) => getRepCollectedTotal(db, repId) - getRepPaidInTotal(db, repId);
+
+/** Customer money a rep collected in a month (app_private.rep_amount_due); no walk-ins. */
+export const getRepAmountDue = (db: Db, repId: string, period: string) => getRepCustomerCollections(db, repId, period);
 
 export const getPaymentOutstanding = (
   totalSales: number,
@@ -95,33 +115,36 @@ export const getPaymentTotal = (payment: PaymentBreakdown) =>
 export const getPaymentTotalAccounted = (totalSales: number, payment: PaymentBreakdown) =>
   getPaymentTotal(payment) +
   getPaymentOutstanding(totalSales, payment.cashAmount, payment.transferAmount);
-export function getRepPaymentSummary(db: Db, repId: string, period: string) {
+/**
+ * A rep's pay-in position. cash / transfer / confirmed: pay-ins dated in `period`
+ * (all pay-ins when no period). outstanding: the running balance still to pay in.
+ */
+export function getRepPaymentSummary(db: Db, repId: string, period?: string) {
   const rows = db.payments.filter(
     (payment) =>
       payment.tenantId === db.tenant.id &&
       payment.salesRepId === repId &&
-      payment.period === period &&
+      (!period || payment.period === period) &&
       payment.status !== "declined",
   );
   const cash = rows.reduce((sum, payment) => sum + payment.cashAmount, 0);
   const transfer = rows.reduce((sum, payment) => sum + payment.transferAmount, 0);
-  const walkInSales = getRepTotalSales(db, repId, period);
-  const customerCollections = getRepCustomerCollections(db, repId, period);
-  /** what the rep must pay in: walk-in sales + customer payments collected */
-  const totalSales = walkInSales + customerCollections;
-  const confirmedRows = rows.filter((payment) => payment.status === "confirmed");
-  const confirmed = confirmedRows.reduce((sum, payment) => sum + getPaymentTotal(payment), 0);
+  const confirmed = rows.filter((payment) => payment.status === "confirmed").reduce((sum, payment) => sum + getPaymentTotal(payment), 0);
+  const collectedTotal = getRepCollectedTotal(db, repId);
+  const paidInTotal = getRepPaidInTotal(db, repId);
   return {
-    /** reported (submitted, acknowledged or confirmed) — used to cap new submissions */
+    /** paid in (submitted, acknowledged or confirmed) in the period */
     cash,
     transfer,
-    /** received = owner-confirmed only */
+    /** of which confirmed */
     confirmed,
     awaitingConfirmation: cash + transfer - confirmed,
-    walkInSales,
-    customerCollections,
-    totalSales,
-    outstanding: Math.max(totalSales - cash - transfer, 0),
+    /** customer money collected in the period (all time without a period) */
+    customerCollections: period ? getRepCustomerCollections(db, repId, period) : collectedTotal,
+    collectedTotal,
+    paidInTotal,
+    /** still to pay in: collected − paid in, all time */
+    outstanding: Math.max(collectedTotal - paidInTotal, 0),
   };
 }
 export const getPaymentTotalSales = (db: Db, payment: Payment) =>
@@ -140,7 +163,7 @@ export function getPaymentCollectedToDate(db: Db, payment: Payment) {
     .reduce((sum, item) => sum + item.cashAmount + item.transferAmount, 0);
 }
 export const getPaymentOutstandingAmount = (db: Db, payment: Payment) =>
-  Math.max(getPaymentTotalSales(db, payment) - getPaymentCollectedToDate(db, payment), 0);
+  Math.max(getRepBalance(db, payment.salesRepId), 0);
 export const getPaymentAccountedAmount = (db: Db, payment: Payment) =>
   getPaymentCollectedToDate(db, payment) + getPaymentOutstandingAmount(db, payment);
 
@@ -165,11 +188,8 @@ export function getPaymentsForScope(db: Db, scope: AccessScope, filters: Payment
       if (payment.tenantId !== scope.user.tenantId || payment.tenantId !== db.tenant.id)
         return false;
       if (scope.user.role === "sales_rep" && payment.salesRepId !== scope.user.id) return false;
-      if (
-        scope.user.role === "manager" &&
-        (payment.managerId !== scope.user.id || !scope.branchIds?.includes(payment.branchId))
-      )
-        return false;
+      // A manager sees every pay-in of their branch, also those made before they took over.
+      if (scope.user.role === "manager" && !scope.branchIds?.includes(payment.branchId)) return false;
       if (scope.user.role === "storekeeper") return false;
       return (
         (!filters.period || payment.period === filters.period) &&
@@ -181,6 +201,12 @@ export function getPaymentsForScope(db: Db, scope: AccessScope, filters: Payment
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
 }
 
+/**
+ * Manager dashboard figures for a month. `rows` are the branch's pay-ins for the month.
+ *   paid in      confirmed pay-ins dated in the month (cash / transfer), plus those awaiting
+ *   collected    customer money the branch's reps collected in the month
+ *   outstanding  what the branch's reps still have to pay in, all time (running balance)
+ */
 export function getManagerPaymentSummary(
   db: Db,
   rows: Payment[],
@@ -190,9 +216,12 @@ export function getManagerPaymentSummary(
   const manager = db.users.find(
     (user) => user.id === managerId && user.role === "manager" && user.tenantId === db.tenant.id,
   );
-  const currentRows = rows.filter((payment) => payment.status === "confirmed");
-  const cashPayment = currentRows.reduce((sum, payment) => sum + payment.cashAmount, 0);
-  const transferPayment = currentRows.reduce((sum, payment) => sum + payment.transferAmount, 0);
+  const confirmedRows = rows.filter((payment) => payment.status === "confirmed");
+  const cashPayment = confirmedRows.reduce((sum, payment) => sum + payment.cashAmount, 0);
+  const transferPayment = confirmedRows.reduce((sum, payment) => sum + payment.transferAmount, 0);
+  const awaiting = rows
+    .filter((payment) => payment.status === "submitted" || payment.status === "acknowledged")
+    .reduce((sum, payment) => sum + getPaymentTotal(payment), 0);
   const reps = manager?.branchId
     ? db.users.filter(
         (user) =>
@@ -205,22 +234,21 @@ export function getManagerPaymentSummary(
   const totalSales = manager?.branchId
     ? getSalesRevenue(db, { branchId: manager.branchId, range: { from: `${period}-01`, to: `${period}-31` } })
     : 0;
-  // What reps owe: walk-in sales + customer payments they collected (as the server).
-  const amountDue = reps.reduce((sum, rep) => sum + getRepAmountDue(db, rep.id, period), 0);
-  const outstanding = reps.reduce((sum, rep) => {
-    const collected = currentRows
-      .filter((payment) => payment.salesRepId === rep.id)
-      .reduce((total, payment) => total + payment.cashAmount + payment.transferAmount, 0);
-    return sum + Math.max(getRepAmountDue(db, rep.id, period) - collected, 0);
-  }, 0);
-  const collected = cashPayment + transferPayment;
+  const collectedThisMonth = reps.reduce((sum, rep) => sum + getRepCustomerCollections(db, rep.id, period), 0);
+  const collected = reps.reduce((sum, rep) => sum + getRepCollectedTotal(db, rep.id), 0);
+  const paidIn = reps.reduce((sum, rep) => sum + getRepPaidInTotal(db, rep.id), 0);
   return {
     cashPayment,
     transferPayment,
-    outstanding,
+    awaiting,
     totalSales,
-    amountDue,
-    collectionRate: amountDue ? (collected / amountDue) * 100 : 0,
+    collectedThisMonth,
+    /** all time, the branch's reps: collected − paid in (not declined) */
+    collected,
+    paidIn,
+    outstanding: Math.max(collected - paidIn, 0),
+    /** share of everything collected that has been paid in */
+    collectionRate: collected ? (Math.min(paidIn, collected) / collected) * 100 : 0,
   };
 }
 
@@ -236,10 +264,7 @@ export function getOwnerPaymentSummary(db: Db, rows: Payment[]) {
   return {
     cash: confirmedRows.reduce((sum, payment) => sum + payment.cashAmount, 0),
     transfer: confirmedRows.reduce((sum, payment) => sum + payment.transferAmount, 0),
-    outstanding: [...latestByRep.values()].reduce(
-      (sum, payment) => sum + getPaymentOutstandingAmount(db, payment),
-      0,
-    ),
+    outstanding: [...latestByRep.keys()].reduce((sum, repId) => sum + Math.max(getRepBalance(db, repId), 0), 0),
     submitted: rows.filter((payment) => payment.status === "submitted").length,
     acknowledged: rows.filter((payment) => payment.status === "acknowledged").length,
     pendingConfirmation: rows.filter((payment) => payment.status === "acknowledged").length,
@@ -335,7 +360,7 @@ export function toPaymentEntry(payment: Payment): PaymentEntry {
   return {
     kind: "rep",
     id: payment.id,
-    date: payment.submittedAt.slice(0, 10),
+    date: payment.paymentDate ?? payment.submittedAt.slice(0, 10),
     period: payment.period,
     branchId: payment.branchId,
     repId: payment.salesRepId,
@@ -412,7 +437,7 @@ function inPaymentScope(
     case "owner":
       return true;
     case "manager":
-      return row.managerId === scope.user.id && !!scope.branchIds?.includes(row.branchId);
+      return !!scope.branchIds?.includes(row.branchId);
     case "sales_rep":
       return row.repId === scope.user.id;
     default:
@@ -482,18 +507,15 @@ export function getPaymentOverviewSummary(
   );
   const repIds = new Set(reps.map((rep) => rep.id));
   const soldToCustomers = reps.reduce((total, rep) => total + getSalesRevenue(db, { repId: rep.id, saleType: "customer", range }), 0);
-  const walkIns = reps.reduce((total, rep) => total + getSalesRevenue(db, { repId: rep.id, saleType: "walk_in", range }), 0);
   const customerCollections = db.customerPayments
-    .filter((p) => p.tenantId === db.tenant.id && repIds.has(p.receivedBy) && p.status === "confirmed"
+    .filter((p) => p.tenantId === db.tenant.id && repIds.has(p.receivedBy) && isRepCollection(p)
       && p.paymentDate >= range.from && p.paymentDate <= range.to)
     .reduce((total, p) => total + p.amount, 0);
-  const paidInAny = payIns.filter((e) => e.status !== "declined" && repIds.has(e.repId)).reduce((total, e) => total + e.amount, 0);
-  const outstanding = Math.max(walkIns + customerCollections - paidInAny, 0);
+  // Still to pay in: the running balance of these reps (all dates).
+  const outstanding = Math.max(reps.reduce((total, rep) => total + getRepBalance(db, rep.id), 0), 0);
   return {
     soldToCustomers,
     customerCollections,
-    /** Reps' own walk-in sales: 0 since reps sell through customer orders (older months may have some). */
-    walkIns,
     customersOwe: soldToCustomers - customerCollections,
     paidIn: sum("confirmed") + sum("submitted") + sum("acknowledged"),
     confirmed: sum("confirmed"),

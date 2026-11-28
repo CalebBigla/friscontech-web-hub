@@ -13,7 +13,7 @@ import {
   getManagerNetRemittanceDue,
   validateRemittanceReconciliation,
 } from "@/lib/remittance-calculations";
-import { getRepAmountDue, isValidPaymentPeriod } from "@/lib/payment-calculations";
+import { getRepBalance, getRepTotalSales, isValidPaymentPeriod } from "@/lib/payment-calculations";
 import { fieldErrorsFrom } from "@/lib/supabase-helpers";
 import { canReviewApproval } from "@/lib/approvals";
 import { findInventory, getAvailable } from "@/lib/inventory-calculations";
@@ -247,7 +247,8 @@ export function validateCustomerPayment(db: Db, scope: AccessScope, input: Custo
 // submitted → acknowledged (branch manager) → confirmed / declined (owner)
 
 export type PaymentSubmission = {
-  period: string;
+  /** YYYY-MM-DD */
+  paymentDate: string;
   cashAmount: number;
   transferAmount: number;
   transferReference?: string;
@@ -261,7 +262,9 @@ export function validatePaymentSubmission(db: Db, scope: AccessScope, input: Pay
   const rep = scope.user;
   if (rep.role !== "sales_rep" || scope.repId !== rep.id) errors.form = "Only a sales representative can submit their own payment";
   if (rep.tenantId !== db.tenant.id || rep.status !== "active" || !rep.branchId) errors.form = "An active sales representative and branch are required";
-  if (!isValidPaymentPeriod(input.period) || input.period > db.tenant.referenceDate.slice(0, 7)) errors.period = "Choose a valid current or past month";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.paymentDate)) errors.paymentDate = "Choose the payment date";
+  else if (input.paymentDate > db.tenant.referenceDate) errors.paymentDate = "The payment date can't be in the future";
+  if (input.cashAmount + input.transferAmount <= 0) errors.cashAmount = "Enter the amount you are paying in";
   if (!Number.isFinite(input.cashAmount) || input.cashAmount < 0) errors.cashAmount = "Cash cannot be negative";
   if (!Number.isFinite(input.transferAmount) || input.transferAmount < 0) errors.transferAmount = "Transfer cannot be negative";
   if (input.transferAmount > 0 && !input.transferReference?.trim())
@@ -272,11 +275,10 @@ export function validatePaymentSubmission(db: Db, scope: AccessScope, input: Pay
       ? db.users.find((u) => u.id === branch.managerId && u.role === "manager" && u.status === "active" && u.tenantId === rep.tenantId)
       : null;
     if (!branch || !manager) errors.form = "A branch manager must be assigned before submitting a payment";
-    const previouslyCollected = db.payments
-      .filter((p) => p.tenantId === rep.tenantId && p.salesRepId === rep.id && p.period === input.period && p.status !== "declined")
-      .reduce((sum, p) => sum + p.cashAmount + p.transferAmount, 0);
-    if (getRepAmountDue(db, rep.id, input.period) - previouslyCollected - input.cashAmount - input.transferAmount < 0)
-      errors.transferAmount = "Cash and transfer cannot exceed what you collected (walk-in sales and customer payments)";
+    // Up to the customer money collected and not yet paid in (any dates).
+    const balance = getRepBalance(db, rep.id);
+    if (input.cashAmount + input.transferAmount > balance)
+      errors.transferAmount = `You can pay in up to ₦${Math.max(balance, 0).toLocaleString("en-NG")}: the customer money you collected and haven't paid in yet`;
   }
   return hasErrors(errors) ? errors : null;
 }
@@ -423,10 +425,11 @@ export function validateRemittanceSubmit(db: Db, scope: AccessScope, input: Remi
   if (!Number.isFinite(input.transferAmount) || input.transferAmount < 0) errors.transferAmount = "Transfer cannot be negative";
   if (input.transferAmount > 0 && !input.transferReference?.trim())
     errors.transferReference = "A transfer reference is required when transfer is greater than zero";
-  if (db.remittances.some((r) => r.tenantId === manager.tenantId && r.managerId === manager.id && r.period === input.period && r.status === "submitted"))
+  if (db.remittances.some((r) => r.tenantId === manager.tenantId && r.branchId === manager.branchId && r.period === input.period && r.status === "submitted"))
     errors.form = "A remittance for this period is already awaiting Owner review";
   if (hasErrors(errors)) return errors;
-  if (!getManagerEligiblePayments(db, manager.id, input.period).length) return { form: "There are no acknowledged Sales Rep payments for this period" };
+  if (!getManagerEligiblePayments(db, manager.id, input.period).length && getRepTotalSales(db, manager.id, input.period) === 0)
+    return { form: "There are no sales rep pay-ins or walk-in sales for this period" };
   const netRemittanceDue = getManagerNetRemittanceDue(db, manager.id, input.period);
   const reconciliation = validateRemittanceReconciliation(netRemittanceDue, input);
   if (netRemittanceDue < 0) errors.form = "Recorded expenses exceed the eligible payment position for this period";

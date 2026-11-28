@@ -29,13 +29,13 @@ import type { CustomerPayment, Db, Payment, PaymentStatus } from "@/data/mock-db
 import { saleTotal } from "@/lib/calculations";
 import { orderIdOf } from "@/lib/customer-calculations";
 import { formatDate, formatNaira, formatTime } from "@/lib/format";
-import { CustomerFilter, MethodFilter, PeriodFilter, usePeriodFilter } from "@/components/period-filter";
+import { MethodFilter, PeriodFilter, usePeriodFilter } from "@/components/period-filter";
 import {
   getPaymentActions,
   getPaymentEntriesForScope,
   getPaymentOverviewSummary,
   getRepPaymentSummary,
-  getRepSalesForPeriod,
+  isRepCollection,
   isValidPaymentPeriod,
   paymentMethodLabel,
   paymentStatusLabel,
@@ -75,7 +75,6 @@ const kindLabel: Record<PaymentKind, string> = {
   rep: "Sales payment",
   customer: "Customer payment",
 };
-const currentMonth = (date: string) => date.slice(0, 7);
 
 const monthLabel = (period: string) =>
   isValidPaymentPeriod(period)
@@ -92,14 +91,10 @@ export function PaymentPage() {
   const today = db.tenant.referenceDate;
   // Day, week, month (default) or chosen dates.
   const { state: periodState, setState: setPeriodState, range, label: rangeLabel } = usePeriodFilter(today);
-  // The month a rep pays in for, chosen in the submit dialog (this month by default).
-  const [period, setPeriod] = useState(currentMonth(today));
   const [method, setMethod] = useState("all");
-  const [customerId, setCustomerId] = useState("all");
   const [branchId, setBranchId] = useState("all");
   const [repId, setRepId] = useState("all");
   const [status, setStatus] = useState("all");
-  const [kind, setKind] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [quickAction, setQuickAction] = useState<QuickAction>(null);
   const quick = (id: string, a: QuickAction) => {
@@ -113,25 +108,23 @@ export function PaymentPage() {
     ...(branchId !== "all" ? { branchId } : {}),
     ...(repId !== "all" ? { salesRepId: repId } : {}),
   };
+  // Payments are pay-ins only: a rep handing money to their manager. Customer
+  // payments belong to each customer's ledger (Customers).
   const periodEntries = useMemo(
-    () => getPaymentEntriesForScope(db, scope, { ...filters, kind: kind as PaymentKind | "all" }),
-    [db, scope, range.from, range.to, branchId, repId, kind], // eslint-disable-line react-hooks/exhaustive-deps
+    () => getPaymentEntriesForScope(db, scope, { ...filters, kind: "rep" }),
+    [db, scope, range.from, range.to, branchId, repId], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const rows = periodEntries.filter(
     (e) =>
       (status === "all" || e.status === status) &&
-      (method === "all" || (method === "cash" ? e.cash > 0 : e.transfer > 0)) &&
-      (customerId === "all" || e.customerId === customerId),
+      (method === "all" || (method === "cash" ? e.cash > 0 : e.transfer > 0)),
   );
-  // What the rows shown add up to (declined left out). A customer payment and the
-  // pay-in that hands that money to the manager are the same naira at two steps,
-  // so the two kinds are totalled separately, never added together.
+  // What the rows shown add up to, split by cash and transfer (declined left out).
   const counted = rows.filter((e) => e.status !== "declined");
-  const kindTotal = (k: PaymentKind) => counted.filter((e) => e.kind === k).reduce((sum, e) => sum + e.amount, 0);
   const shownTotals = [
-    counted.some((e) => e.kind === "customer") && `Collected from customers ${formatNaira(kindTotal("customer"))}`,
-    counted.some((e) => e.kind === "rep") && `Paid in to manager ${formatNaira(kindTotal("rep"))}`,
-  ].filter(Boolean).join(" · ") || "Nothing counted";
+    method !== "transfer" && `Cash ${formatNaira(counted.reduce((sum, e) => sum + e.cash, 0))}`,
+    method !== "cash" && `Transfer ${formatNaira(counted.reduce((sum, e) => sum + e.transfer, 0))}`,
+  ].filter(Boolean).join(" · ");
   const tableSubtitle = `${rangeLabel} · ${rows.length} payment${rows.length === 1 ? "" : "s"} · ${shownTotals}${
     counted.length < rows.length ? " (declined not counted)" : ""
   }`;
@@ -156,7 +149,7 @@ export function PaymentPage() {
   const title = role === "manager" ? "Team Payments" : "Payments";
   const subtitle =
     role === "sales_rep"
-      ? "Submit your sales payments and track customer payments you collected."
+      ? "Pay in the customer money you collected to your manager."
       : role === "manager"
         ? "Confirm cash payments from your branch. Acknowledge transfers; the owner confirms them."
         : "Confirm transfers (cash is confirmed by branch managers). Void a confirmed payment if it was wrong. Only confirmed money counts as received.";
@@ -178,7 +171,6 @@ export function PaymentPage() {
             <Button
               size="sm"
               onClick={() => setSubmitOpen(true)}
-              disabled={!isValidPaymentPeriod(period)}
             >
               Submit payment
             </Button>
@@ -187,44 +179,26 @@ export function PaymentPage() {
       </div>
 
       <DataGate isLoading={isLoading} error={error}>
-      {/* Two separate balances, each adding up on its own line:
-          customers: sold - paid by customers = customers still owe (as the Customers tab);
-          reps: collected - paid in = still to pay in. */}
-      <p className="mb-2 text-caption font-semibold uppercase tracking-wide text-muted-foreground">From customers · {rangeLabel}</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatTile label="Sold to customers" value={formatNaira(summary.soldToCustomers)} detail="Fulfilled orders" />
-        <StatTile
-          tone="success"
-          label="Paid by customers"
-          value={formatNaira(summary.customerCollections)}
-          detail="Credited to their accounts"
-        />
-        <StatTile
-          tone={summary.customersOwe > 0 ? "danger" : "success"}
-          label={summary.customersOwe >= 0 ? "Customers still owe" : "Customers in credit"}
-          value={formatNaira(Math.abs(summary.customersOwe))}
-          detail="Sold − paid by customers"
-        />
-      </div>
-      <p className="mb-2 mt-4 text-caption font-semibold uppercase tracking-wide text-muted-foreground">Paid in by sales reps · {rangeLabel}</p>
+      {/* Pay-ins only. "Not yet paid in" is the running balance: customer money
+          collected − everything paid in, whatever the dates. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile
           tone="success"
           label="Paid in · confirmed"
           value={formatNaira(summary.confirmed)}
-          detail={`${summary.confirmedCount} pay-in${summary.confirmedCount === 1 ? "" : "s"} confirmed (cash by manager, transfer by Owner)`}
+          detail={`${summary.confirmedCount} pay-in${summary.confirmedCount === 1 ? "" : "s"} · ${rangeLabel}`}
         />
         <StatTile
           tone="warning"
           label="Paid in · awaiting"
           value={formatNaira(summary.awaitingAcknowledgement + summary.awaitingConfirmation)}
-          detail={`${summary.awaitingAcknowledgementCount} with manager · ${summary.awaitingConfirmationCount} with Owner${summary.declinedCount ? ` · ${summary.declinedCount} declined (${formatNaira(summary.declined)})` : ""}`}
+          detail={`${summary.awaitingAcknowledgementCount} with manager · ${summary.awaitingConfirmationCount} with Owner${summary.declinedCount ? ` · ${summary.declinedCount} declined` : ""}`}
         />
         <StatTile
           tone="violet"
-          label="Still to pay in"
+          label="Not yet paid in"
           value={formatNaira(summary.outstanding)}
-          detail={summary.walkIns > 0 ? "Collected (customer payments + walk-ins) − paid in" : "Collected from customers − paid in"}
+          detail="Customer money collected − paid in, all dates"
         />
       </div>
 
@@ -263,31 +237,6 @@ export function PaymentPage() {
               />
             )}
             <MethodFilter value={method} onChange={setMethod} />
-            <CustomerFilter
-              db={db}
-              scope={scope}
-              value={customerId}
-              className="w-44"
-              onChange={(v) => {
-                setCustomerId(v);
-                // Only customer payments belong to a customer.
-                if (v !== "all") setKind("customer");
-              }}
-            />
-            <FilterSelect
-              label="Type"
-              value={kind}
-              onChange={(v) => {
-                setKind(v);
-                if (v === "rep") setCustomerId("all");
-              }}
-              className="w-36"
-              options={[
-                { value: "all", label: "All types" },
-                { value: "rep", label: "Sales payments" },
-                { value: "customer", label: "Customer payments" },
-              ]}
-            />
             <FilterSelect
               label="Status"
               value={status}
@@ -309,7 +258,7 @@ export function PaymentPage() {
             <table className="w-full min-w-[680px] text-left text-xs">
               <thead className="border-b border-border bg-muted/40 text-caption uppercase text-muted-foreground">
                 <tr>
-                  {["Date", "Customer", "Amount", "Method", "Status", "Handled by", ...(role === "sales_rep" ? [] : ["Action"])].map(
+                  {["Date", "Sales rep", "Amount", "Method", "Status", "Handled by", ...(role === "sales_rep" ? [] : ["Action"])].map(
                     (h) => (
                       <th key={h} className="px-4 py-3 font-semibold">
                         {h}
@@ -329,13 +278,8 @@ export function PaymentPage() {
                   >
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(e.date)}</td>
                     <td className="px-4 py-3">
-                      <p className="font-semibold">{e.kind === "customer" ? partyName(db, e) : "Pay-in to manager"}</p>
-                      <p className="text-caption text-muted-foreground">
-                        {e.kind === "customer"
-                          ? `Collected by ${userName(db, e.repId)}`
-                          : `Paid in by ${userName(db, e.repId)}`}{" "}
-                        · {e.id}
-                      </p>
+                      <p className="font-semibold">{userName(db, e.repId)}</p>
+                      <p className="text-caption text-muted-foreground">Pay-in · {e.id}</p>
                     </td>
                     <td className="px-4 py-3 font-bold tabular-nums">{formatNaira(e.amount)}</td>
                     <td className="px-4 py-3">{paymentMethodLabel[e.method]}</td>
@@ -400,8 +344,6 @@ export function PaymentPage() {
         <SubmitPaymentDialog
           db={db}
           userId={userId}
-          period={period}
-          onPeriodChange={setPeriod}
           open={submitOpen}
           onOpenChange={setSubmitOpen}
         />
@@ -507,15 +449,14 @@ function PaymentDrawer({
     setAction(null);
   };
 
-  const repSales = entry?.kind === "rep" ? getRepSalesForPeriod(db, entry.repId, entry.period) : [];
-  // The customer payments the rep collected in the pay-in's month (what the pay-in hands over).
+  // The customer money the rep collected in the pay-in's month.
   const repCollections = entry?.kind === "rep"
     ? db.customerPayments
-        .filter((p) => p.tenantId === db.tenant.id && p.receivedBy === entry.repId && p.status === "confirmed" && p.paymentDate.startsWith(entry.period))
+        .filter((p) => p.tenantId === db.tenant.id && p.receivedBy === entry.repId && isRepCollection(p) && p.paymentDate.startsWith(entry.period))
         .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
     : [];
-  const repPosition =
-    entry?.kind === "rep" ? getRepPaymentSummary(db, entry.repId, entry.period) : null;
+  // The rep's running position (all dates).
+  const repPosition = entry?.kind === "rep" ? getRepPaymentSummary(db, entry.repId) : null;
   const customerPayment =
     entry?.kind === "customer" ? db.customerPayments.find((p) => p.id === entry.id) : undefined;
   const linkedOrderLines = customerPayment
@@ -553,10 +494,9 @@ function PaymentDrawer({
                 <Row label="Transfer">{formatNaira(entry.transfer)}</Row>
                 {repPosition && (
                   <>
-                    <Row label="Collected from customers this month">{formatNaira(repPosition.customerCollections)}</Row>
-                    {repPosition.walkInSales > 0 && <Row label="Walk-in sales this month">{formatNaira(repPosition.walkInSales)}</Row>}
-                    <Row label="Total to pay in">{formatNaira(repPosition.totalSales)}</Row>
-                    <Row label="Confirmed so far">{formatNaira(repPosition.confirmed)}</Row>
+                    <Row label="Pay-in date">{formatDate(entry.date)}</Row>
+                    <Row label="Rep's collections (all dates)">{formatNaira(repPosition.collectedTotal)}</Row>
+                    <Row label="Rep's pay-ins (all dates)">{formatNaira(repPosition.paidInTotal)}</Row>
                     <Row label="Not yet paid in">
                       {formatNaira(repPosition.outstanding)}
                     </Row>
@@ -587,7 +527,7 @@ function PaymentDrawer({
               <Section
                 title={
                   entry.kind === "rep"
-                    ? `Customer payments collected (${repCollections.length})`
+                    ? `Collected in ${monthLabel(entry.period)} (${repCollections.length})`
                     : "Linked order lines"
                 }
               >
@@ -596,10 +536,7 @@ function PaymentDrawer({
                     {formatNaira(p.amount)}
                   </Row>
                 ))}
-                {entry.kind === "rep" && repSales.length > 0 && (
-                  <p className="pt-2 text-caption font-medium text-muted-foreground">Walk-in sales ({repSales.length})</p>
-                )}
-                {(entry.kind === "rep" ? repSales.slice(-8).reverse() : linkedOrderLines).map(
+                {(entry.kind === "rep" ? [] : linkedOrderLines).map(
                   (s) => (
                     <Row
                       key={s.id}
@@ -609,7 +546,7 @@ function PaymentDrawer({
                     </Row>
                   ),
                 )}
-                {(entry.kind === "rep" ? repSales.length + repCollections.length : linkedOrderLines.length) === 0 && (
+                {(entry.kind === "rep" ? repCollections.length : linkedOrderLines.length) === 0 && (
                   <p className="text-muted-foreground">{entry.kind === "rep" ? "Nothing collected this month." : "No linked sales."}</p>
                 )}
                 {entry.kind === "customer" && entry.customerId && scope.canViewCustomers && (
@@ -858,18 +795,15 @@ function Trail({ db, entry }: { db: Db; entry: PaymentEntry }) {
 function SubmitPaymentDialog({
   db,
   userId,
-  period,
-  onPeriodChange,
   open,
   onOpenChange,
 }: {
   db: Db;
   userId: string;
-  period: string;
-  onPeriodChange: (p: string) => void;
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
+  const [paymentDate, setPaymentDate] = useState(db.tenant.referenceDate);
   const [cash, setCash] = useState("");
   const [transfer, setTransfer] = useState("");
   const [reference, setReference] = useState("");
@@ -878,7 +812,7 @@ function SubmitPaymentDialog({
   const [errors, setErrors] = useState<FieldErrors>({});
   const submitPayment = useSubmitPayment();
   const idempotencyKey = useIdempotencyKey(open);
-  const position = getRepPaymentSummary(db, userId, period);
+  const position = getRepPaymentSummary(db, userId);
   const cashN = cash === "" ? 0 : Number(cash);
   const transferN = transfer === "" ? 0 : Number(transfer);
   const remaining = position.outstanding;
@@ -888,10 +822,10 @@ function SubmitPaymentDialog({
   });
   const submit = async () => {
     setBusy(true);
-    const input = { period, cashAmount: cashN, transferAmount: transferN, transferReference: reference, note };
+    const input = { paymentDate, cashAmount: cashN, transferAmount: transferN, transferReference: reference, note };
     const result = await runWrite(validatePaymentSubmission(db, getAccessScope(db, userId), input), () =>
       submitPayment.mutateAsync({
-        p_period: period,
+        p_payment_date: paymentDate,
         p_cash_amount: cashN,
         p_transfer_amount: transferN,
         p_transfer_reference: reference.trim() || null,
@@ -905,6 +839,7 @@ function SubmitPaymentDialog({
       return;
     }
     toast.success("Payment submitted to your manager");
+    setPaymentDate(db.tenant.referenceDate);
     setCash("");
     setTransfer("");
     setReference("");
@@ -918,32 +853,25 @@ function SubmitPaymentDialog({
         <DialogHeader>
           <DialogTitle>Submit payment</DialogTitle>
           <DialogDescription>
-            Pay in the money you collected from customers this month (₦{position.customerCollections.toLocaleString("en-NG")})
-            {position.walkInSales > 0 && <> and your walk-in sales (₦{position.walkInSales.toLocaleString("en-NG")})</>}.
-            Your manager confirms cash; a transfer is acknowledged by your manager and confirmed by the Owner.
+            Pay in customer money you collected. Your manager confirms cash; a transfer is acknowledged by your manager and confirmed by the Owner.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <Label className="text-xs">Period</Label>
+            <Label htmlFor="payin-date" className="text-xs">Payment date *</Label>
             <Input
+              id="payin-date"
               className="mt-1.5"
-              type="month"
-              max={currentMonth(db.tenant.referenceDate)}
-              value={period}
-              onChange={(e) => onPeriodChange(e.target.value)}
-              aria-label="Payment period"
+              type="date"
+              max={db.tenant.referenceDate}
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
             />
-            <FieldError message={errors.period} />
+            <FieldError message={errors.paymentDate} />
           </div>
           <div>
-            <Label className="text-xs">Not yet reported</Label>
-            <Input
-              className="mt-1.5"
-              readOnly
-              value={formatNaira(remaining)}
-              aria-label="Not yet reported"
-            />
+            <Label htmlFor="payin-balance" className="text-xs">Not yet paid in</Label>
+            <Input id="payin-balance" className="mt-1.5" readOnly value={formatNaira(remaining)} />
           </div>
           <div>
             <Label className="text-xs">Cash (₦)</Label>
@@ -993,8 +921,8 @@ function SubmitPaymentDialog({
           className={`rounded-md bg-muted px-3 py-2 text-xs font-semibold ${check.balanced ? "text-success" : "text-destructive"}`}
         >
           {check.balanced
-            ? `Still to report after this: ${formatNaira(check.outstanding)}`
-            : "Cash and transfer cannot exceed what is left to report"}
+            ? `Still with you after this: ${formatNaira(check.outstanding)}`
+            : "Cash and transfer can't be more than you still hold"}
         </p>
         <FieldError message={errors.form} />
         <DialogFooter>
